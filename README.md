@@ -1,87 +1,98 @@
-# テンプレート
+# slack_rs
+
+A user-friendly Slack SDK implementation using slack-morphism-rust.
+
+## Implementation Status
+
+- :white_check_mark: 依存関係整理 (slack-morphism-rust, axum)
+- :white_check_mark: Socket Mode対応 (feature = "socket_mode")
+  - :white_check_mark: メッセージ受信
+  - :white_check_mark: コマンド対応
+  - :white_check_mark: インタラクション対応
+- :arrows_counterclockwise: axumでのHTTPサーバー
+  - :memo: エンドポイント実装
+  - :memo: OAuth対応
+  - :memo: イベント受信
+- :memo: ドキュメント整備
+  - :memo: API使用例
+  - :memo: 環境変数設定
+  - :memo: テスト方法
+
+## Features
+
+### Socket Mode
+
+Socket Modeを使用してSlackイベントを受信するには、以下の手順で実行します：
+
+1. 環境変数の設定:
+```bash
+export SLACK_APP_TOKEN="xapp-..."
+```
+
+2. サンプルコードの実行:
+```bash
+cargo run --example socket_mode_example --features socket_mode
+```
+
+Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-morphism-rust](https://github.com/abdolence/slack-morphism-rust)をベースに、特にSocket Modeを使用したメッセージの受信に焦点を当てています。
 
 ## 実装タスク
 
-📝 **実装タスク一覧**
+### 基本設定
+- :memo: slack-morphism-rustライブラリの依存関係追加
+- :memo: tokio, hyper等の基本的な依存関係の設定
+- :memo: 環境変数設定の仕組み作成（SLACK_TEST_APP_TOKEN等）
 
-✅ 基本構造の実装
-- ✅ `[構造体/列挙型]`の定義
-- ✅ 基本的なメソッドの実装
-- 🔄 テストケースの作成
+### Socket Mode実装
+- :memo: Socket Modeクライアントの基本構造体の定義
+- :memo: Socket Modeを使用したメッセージ受信ロジックの実装
+- :memo: メッセージハンドラーの実装
+- :memo: エラーハンドリングの実装
+- :memo: 非同期処理の最適化
 
-📝 主要機能の実装
-- 📝 [機能1]の実装
-- 📝 [機能2]の実装
-- 📝 エラーハンドリングの追加
+### テストとサンプル実装
+- :memo: Socket Mode実装のユニットテスト作成
+- :memo: Socket Modeを使用したメッセージ受信のサンプルコード作成
+- :memo: サンプルコードの実行テスト作成
+- :memo: テストケースのドキュメント作成
 
-📝 ユースケースの実装
-- 📝 [ユースケース1]の実装
-- 📝 [ユースケース2]の実装
-- 📝 統合テストの作成
+### ドキュメント
+- :memo: READMEの使用方法セクションの充実化
+- :memo: APIドキュメントの作成
+- :memo: 環境構築手順の詳細化
 
 ## 主要な要素
 
 - **[要素1]**: [説明]
 - **[要素2]**: [説明]
 
-## `[構造体/列挙型の名前]` [構造体/列挙型]
+## 使用方法
 
-`[名前]` [構造体/列挙型]は、[目的を説明]します。
+### 環境設定
+
+1. Slack APIトークンの取得
+   - Slack Appを作成し、Socket Modeを有効化
+   - App-Level Tokenを発行（`xapp-`で始まるトークン）
+
+2. 環境変数の設定
+```bash
+export SLACK_TEST_APP_TOKEN=xapp-your-token-here
+```
+
+### 基本的な使用例
 
 ```rust
-pub [struct/enum] [名前] {
-    // フィールドや列挙子
-}
+// Socket Modeを使用したメッセージ受信の例
+// ※実装完了後に追加予定
 ```
 
-- `[フィールド/列挙子1]`: [説明]
-- `[フィールド/列挙子2]`: [説明]
+## コンポーネント構成
 
-### `[構造体/列挙型の名前]` のメソッド
+### Socket Modeクライアント
 
-- `[メソッド名]()`: [説明]
-- `[メソッド名]()`: [説明]
+Socket Modeクライアントは、Slackのリアルタイムメッセージを受信するための主要コンポーネントです。
+実装完了後、こちらに具体的な使用方法と設定例を追加します。
 
-## PlantUML ダイアグラム
+### エラーハンドリング
 
-```plantuml
-@startuml
-// コンポーネントの関係を表すダイアグラム
-@enduml
-```
-
-この図は、[ダイアグラムが表現している内容の説明]を示しています。
-
-## ユースケース
-
-[コンポーネント名]を使用した具体的なユースケースを以下に示します。
-
-### 1. [ユースケース1の名前]
-
-**目的**: [ユースケースの目的を説明]
-
-**実装タスク**:
-- 📝 [具体的な実装タスク1]
-- 📝 [具体的な実装タスク2]
-- 📝 テストケースの作成
-
-**ユースケース例**:
-- [具体例1] 
-- [具体例2]
-- [具体例3]
-
-```plantuml
-@startuml
-// ユースケースの関係を表すダイアグラム
-@enduml
-```
-
-このシステムでは、[ユースケースの詳細な説明]:
-
-- `[コンポーネント1]`: [役割の説明]
-  - `[ツール1]`: [機能の説明]
-  - `[ツール2]`: [機能の説明]
-
-### 2. [ユースケース2の名前]
-
-[以下同様]
+エラーハンドリングの方針と実装例については、実装完了後に追加します。
