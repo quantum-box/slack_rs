@@ -9,15 +9,14 @@ use slack_morphism::socket_mode::{
 use slack_morphism::{
     prelude::*,
     SlackClient,
-    hyper_tokio::SlackClientHyperConnector,
-    api::chat::*,
+    hyper_tokio::{SlackClientHyperConnector, SlackClientHyperHttpsConnector},
 };
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
 /// Type alias for a Slack client using the HTTPS connector
-type SlackHyperClient = SlackClient<SlackClientHyperConnector>;
+type SlackHyperClient = SlackClient<SlackClientHyperConnector<SlackClientHyperHttpsConnector>>;
 
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
@@ -83,7 +82,7 @@ impl SocketModeClient {
         let content = SlackMessageContent::new()
             .with_text("Test message from Socket Mode client".into());
         
-        let request = SlackApiChatPostMessageRequest::new(
+        let request = ChatPostMessageRequest::new(
             SlackChannelId(TEST_CHANNEL.to_string()),
             content,
         );
