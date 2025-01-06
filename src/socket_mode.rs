@@ -9,6 +9,10 @@ use slack_morphism::socket_mode::{
 use slack_morphism::hyper_tokio::SlackClientHyperConnector;
 use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
+use hyper::Uri;
+use tokio_rustls;
+use rustls::{self, ClientConfig};
+use rustls_native_certs::load_native_certs;
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
@@ -36,13 +40,17 @@ impl SocketModeClient {
 
     /// Connects to Slack's Socket Mode WebSocket server.
     pub async fn connect(&self) -> Result<Arc<SlackHyperClient>, Box<dyn Error>> {
-        let https = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_native_roots()
-            .https_only()
-            .enable_http1()
-            .enable_http2()
-            .build();
+        let mut http = HttpConnector::new();
+        http.enforce_http(false);
         
+        let tls = tokio_rustls::TlsConnector::from(
+            rustls::ClientConfig::builder()
+                .with_safe_defaults()
+                .with_native_roots()
+                .with_no_client_auth()
+        );
+        
+        let https = hyper_rustls::HttpsConnector::from((http, tls));
         let http_client = SlackClientHyperConnector::with_connector(https);
         let client = Arc::new(SlackClient::new(http_client));
 
@@ -94,7 +102,7 @@ impl SocketModeClient {
             content,
         );
 
-        let _response = client.chat_postMessage(&request, &token).await?;
+        let _response = client.post_chat_message(&request, &token).await?;
         info!("Test message sent successfully");
         
         Ok(())
