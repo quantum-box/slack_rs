@@ -1,8 +1,13 @@
 //! Socket Mode implementation for Slack WebSocket connections.
 //! This module is only available when the "socket_mode" feature is enabled.
 
+use slack_morphism::listener::SlackClientEventsListenerEnvironment;
 use slack_morphism::prelude::*;
+use slack_morphism::socket_mode::{
+    SlackClientSocketModeConfig, SlackClientSocketModeListener, SlackSocketModeListenerCallbacks,
+};
 use std::error::Error;
+use std::sync::Arc;
 
 /// A client for Slack's Socket Mode connections.
 #[cfg(feature = "socket_mode")]
@@ -21,14 +26,22 @@ impl SocketModeClient {
 
     /// Connects to Slack's Socket Mode WebSocket server.
     pub async fn connect(&self) -> Result<(), Box<dyn Error>> {
-        let client = SlackClient::new(SlackClientHyperConnector::new());
-        let session = client.open_socket_mode(&self.app_token).await?;
-        
+        let http_client = SlackClientHyperConnector::new()?;
+        let client = Arc::new(SlackClient::new(http_client));
+
+        let token_value = SlackApiTokenValue(self.app_token.clone());
+        let token = SlackApiToken::new(token_value);
+
+        let config = SlackClientSocketModeConfig::new();
+        let callbacks = SlackSocketModeListenerCallbacks::new();
+
+        let env = Arc::new(SlackClientEventsListenerEnvironment::new(client.clone()));
+
+        let listener = SlackClientSocketModeListener::new(&config, env, callbacks);
+
         println!("Connected to Slack Socket Mode");
-        
-        // Keep the connection alive until dropped
-        session.run_loop().await?;
-        
+        listener.listen_for(&token).await?;
+
         Ok(())
     }
 }
