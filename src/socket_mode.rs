@@ -10,6 +10,7 @@ use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
+type SlackHyperClient = SlackClient<SlackClientHyperConnector<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>>>;
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
 /// A client for Slack's Socket Mode connections.
@@ -28,7 +29,7 @@ impl SocketModeClient {
     }
 
     /// Connects to Slack's Socket Mode WebSocket server.
-    pub async fn connect(&self) -> Result<Arc<SlackClient>, Box<dyn Error>> {
+    pub async fn connect(&self) -> Result<Arc<SlackHyperClient>, Box<dyn Error>> {
         let http_client = SlackClientHyperConnector::new()?;
         let client = Arc::new(SlackClient::new(http_client));
 
@@ -69,7 +70,7 @@ impl SocketModeClient {
     }
 
     /// Sends a test message to verify the connection is working
-    pub async fn send_test_message(&self, client: Arc<SlackClient>) -> Result<(), Box<dyn Error>> {
+    pub async fn send_test_message(&self, client: Arc<SlackHyperClient>) -> Result<(), Box<dyn Error>> {
         let token = SlackApiToken::new(SlackApiTokenValue(self.app_token.clone()));
         
         let content = SlackMessageContent::new()
