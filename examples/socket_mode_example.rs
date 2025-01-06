@@ -7,8 +7,10 @@ use tracing::info;
 #[cfg(feature = "socket_mode")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing for logging
-    tracing_subscriber::fmt::init();
+    // Initialize tracing for logging with dependency package logs
+    tracing_subscriber::fmt()
+        .with_env_filter("slack_rs=debug,slack_morphism=debug,hyper=debug,tower=debug")
+        .init();
 
     // Load environment variables from .env file
     dotenv().ok();
