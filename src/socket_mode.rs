@@ -7,13 +7,14 @@ use slack_morphism::socket_mode::{
     SlackClientSocketModeConfig, SlackClientSocketModeListener, SlackSocketModeListenerCallbacks,
 };
 use slack_morphism::hyper_tokio::SlackClientHyperConnector;
+use hyper_rustls::HttpsConnector;
 use hyper::client::HttpConnector;
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
-/// Type alias for a Slack client using the default hyper connector
-type SlackHyperClient = SlackClient<SlackClientHyperConnector<HttpConnector>>;
+/// Type alias for a Slack client using the HTTPS connector
+type SlackHyperClient = SlackClient<SlackClientHyperConnector<HttpsConnector<HttpConnector>>>;
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
 /// A client for Slack's Socket Mode connections.
@@ -33,7 +34,14 @@ impl SocketModeClient {
 
     /// Connects to Slack's Socket Mode WebSocket server.
     pub async fn connect(&self) -> Result<Arc<SlackHyperClient>, Box<dyn Error>> {
-        let http_client = SlackClientHyperConnector::new()?;
+        let https = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_only()
+            .enable_http1()
+            .enable_http2()
+            .build();
+        
+        let http_client = SlackClientHyperConnector::new_with_connector(https)?;
         let client = Arc::new(SlackClient::new(http_client));
 
         let token_value = SlackApiTokenValue(self.app_token.clone());
