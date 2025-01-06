@@ -13,10 +13,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 hyper = { version = "0.14", features = ["client", "http1", "http2", "tcp"] }
-hyper-rustls = { version = "0.24", features = ["http1", "http2", "webpki-tokio"] }
-tokio-rustls = "0.24"
-rustls = { version = "0.21", features = ["dangerous_configuration"] }
-rustls-native-certs = "0.6"
+hyper-rustls = { version = "0.23", features = ["http1", "http2", "webpki-tokio"] }
+tower-service = "0.3"
 
 
 [dev-dependencies]

@@ -6,20 +6,18 @@ use slack_morphism::prelude::*;
 use slack_morphism::socket_mode::{
     SlackClientSocketModeConfig, SlackClientSocketModeListener, SlackSocketModeListenerCallbacks,
 };
-use slack_morphism::hyper_tokio::SlackClientHyperConnector;
-use hyper::client::HttpConnector;
-use hyper_rustls::HttpsConnector;
-use hyper::Uri;
-use tokio_rustls;
-use rustls::{self, ClientConfig};
-use rustls_native_certs::load_native_certs;
+use slack_morphism::{
+    prelude::*,
+    SlackClient,
+    hyper_tokio::SlackClientHyperConnector,
+    api::chat::*,
+};
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
-type HttpsClient = HttpsConnector<HttpConnector>;
 /// Type alias for a Slack client using the HTTPS connector
-type SlackHyperClient = SlackClient<SlackClientHyperConnector<HttpsClient>>;
+type SlackHyperClient = SlackClient<SlackClientHyperConnector>;
 
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
@@ -40,19 +38,7 @@ impl SocketModeClient {
 
     /// Connects to Slack's Socket Mode WebSocket server.
     pub async fn connect(&self) -> Result<Arc<SlackHyperClient>, Box<dyn Error>> {
-        let mut http = HttpConnector::new();
-        http.enforce_http(false);
-        
-        let tls = tokio_rustls::TlsConnector::from(
-            rustls::ClientConfig::builder()
-                .with_safe_defaults()
-                .with_native_roots()
-                .with_no_client_auth()
-        );
-        
-        let https = hyper_rustls::HttpsConnector::from((http, tls));
-        let http_client = SlackClientHyperConnector::with_connector(https);
-        let client = Arc::new(SlackClient::new(http_client));
+        let client = Arc::new(SlackClient::new(SlackClientHyperConnector::new()?));
 
         let token_value = SlackApiTokenValue(self.app_token.clone());
         let token = SlackApiToken::new(token_value);
@@ -102,7 +88,7 @@ impl SocketModeClient {
             content,
         );
 
-        let _response = client.post_chat_message(&request, &token).await?;
+        let _response = client.chat_post_message(&request, &token).await?;
         info!("Test message sent successfully");
         
         Ok(())
