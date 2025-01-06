@@ -25,8 +25,13 @@ impl TokenStorage {
         }
     }
 
+
     pub fn store_token(&mut self, team_id: String, token: SlackOAuthV2AccessResponse) {
         self.tokens.insert(team_id, token);
+    }
+
+    pub fn get_token(&self, team_id: &str) -> Option<&SlackOAuthV2AccessResponse> {
+        self.tokens.get(team_id)
     }
 }
 
