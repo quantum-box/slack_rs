@@ -1,22 +1,17 @@
 //! Socket Mode implementation for Slack WebSocket connections.
 //! This module is only available when the "socket_mode" feature is enabled.
 
-use slack_morphism::listener::SlackClientEventsListenerEnvironment;
-use slack_morphism::prelude::*;
-use slack_morphism::socket_mode::{
-    SlackClientSocketModeConfig, SlackClientSocketModeListener, SlackSocketModeListenerCallbacks,
-};
 use slack_morphism::{
     prelude::*,
-    SlackClient,
-    hyper_tokio::{SlackClientHyperConnector, SlackClientHyperHttpsConnector},
+    socket_mode::{SlackSocketModeListenerCallbacks, SlackSocketModeListener, SlackSocketModeListenerSettings},
+    hyper_tokio::SlackClientHyperConnector,
 };
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
-/// Type alias for a Slack client using the HTTPS connector
-type SlackHyperClient = SlackClient<SlackClientHyperConnector<SlackClientHyperHttpsConnector>>;
+/// Type alias for a Slack client using Hyper
+type SlackHyperClient = SlackClient<SlackClientHyperConnector>;
 
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
@@ -38,40 +33,40 @@ impl SocketModeClient {
     /// Connects to Slack's Socket Mode WebSocket server.
     pub async fn connect(&self) -> Result<Arc<SlackHyperClient>, Box<dyn Error>> {
         let client = Arc::new(SlackClient::new(SlackClientHyperConnector::new()?));
+        let token = SlackApiToken::new(SlackApiTokenValue(self.app_token.clone()));
 
-        let token_value = SlackApiTokenValue(self.app_token.clone());
-        let token = SlackApiToken::new(token_value);
-
-        let config = SlackClientSocketModeConfig::new();
         let callbacks = SlackSocketModeListenerCallbacks::new()
-            .with_hello_events(|event, _ctx, _state| async move {
+            .with_hello_events(|event| async move {
                 info!("Socket Mode connection established: {:?}", event);
+                Ok(())
             })
-            .with_push_events(|envelope, _ctx, _state| async move {
+            .with_push_events(|envelope| async move {
                 info!("Received event: {:?}", envelope);
                 Ok(())
             })
-            .with_command_events(|event, _ctx, _state| async move {
+            .with_command_events(|event| async move {
                 info!("Received command event: {:?}", event);
-                Ok(SlackCommandEventResponse::new(
-                    SlackMessageContent::new().with_text("Command received".into()),
-                ))
+                Ok(())
             })
-            .with_interaction_events(|event, _ctx, _state| async move {
+            .with_interaction_events(|event| async move {
                 info!("Received interaction event: {:?}", event);
                 Ok(())
             });
 
-        let env = Arc::new(SlackClientEventsListenerEnvironment::new(client.clone()));
-        let listener = SlackClientSocketModeListener::new(&config, env, callbacks);
+        let listener = SlackSocketModeListener::new(
+            &client,
+            &token,
+            SlackSocketModeListenerSettings::new(),
+            callbacks,
+        );
 
-        info!("Connected to Slack Socket Mode");
         tokio::spawn(async move {
-            if let Err(e) = listener.listen_for(&token).await {
+            if let Err(e) = listener.listen().await {
                 info!("Socket mode listener error: {:?}", e);
             }
         });
 
+        info!("Connected to Slack Socket Mode");
         Ok(client)
     }
 
@@ -82,7 +77,7 @@ impl SocketModeClient {
         let content = SlackMessageContent::new()
             .with_text("Test message from Socket Mode client".into());
         
-        let request = ChatPostMessageRequest::new(
+        let request = SlackApiChatPostMessageRequest::new(
             SlackChannelId(TEST_CHANNEL.to_string()),
             content,
         );
