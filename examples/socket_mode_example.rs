@@ -9,7 +9,7 @@ use tracing::info;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing for logging with dependency package logs
     tracing_subscriber::fmt()
-        .with_env_filter("slack_rs=debug,slack_morphism=debug,hyper=debug,tower=debug")
+        .with_max_level(tracing::Level::DEBUG)
         .init();
 
     // Load environment variables from .env file
