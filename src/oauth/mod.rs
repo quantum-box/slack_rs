@@ -6,8 +6,7 @@ use axum::{
     Router,
 };
 use slack_morphism::{
-    prelude::*,
-    api::oauth::SlackOAuthV2AccessResponse,
+    api::SlackOAuthV2AccessTokenRequest, api::SlackOAuthV2AccessTokenResponse, prelude::*,
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -17,7 +16,7 @@ use tracing::{error, info};
 // トークンストレージ
 #[derive(Default)]
 pub struct TokenStorage {
-    tokens: HashMap<String, SlackOAuthV2AccessResponse>,
+    tokens: HashMap<String, SlackOAuthV2AccessTokenResponse>,
 }
 
 #[cfg(feature = "oauth")]
@@ -28,12 +27,11 @@ impl TokenStorage {
         }
     }
 
-
-    pub fn store_token(&mut self, team_id: String, token: SlackOAuthV2AccessResponse) {
+    pub fn store_token(&mut self, team_id: String, token: SlackOAuthV2AccessTokenResponse) {
         self.tokens.insert(team_id, token);
     }
 
-    pub fn get_token(&self, team_id: &str) -> Option<&SlackOAuthV2AccessResponse> {
+    pub fn get_token(&self, team_id: &str) -> Option<&SlackOAuthV2AccessTokenResponse> {
         self.tokens.get(team_id)
     }
 }
@@ -42,10 +40,10 @@ impl TokenStorage {
 // OAuth設定
 #[derive(Clone)]
 pub struct OAuthConfig {
-    client_id: String,
-    client_secret: String,
-    redirect_uri: String,
-    token_storage: Arc<RwLock<TokenStorage>>,
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+    pub token_storage: Arc<RwLock<TokenStorage>>,
 }
 
 #[cfg(feature = "oauth")]
@@ -71,21 +69,15 @@ pub fn oauth_router(config: OAuthConfig) -> Router {
 
 #[cfg(feature = "oauth")]
 // OAuth開始ハンドラー
-async fn oauth_start(
-    State(config): State<OAuthConfig>,
-) -> Response {
-    let scopes = vec![
-        "channels:history",
-        "chat:write",
-        "commands",
-    ];
+async fn oauth_start(State(config): State<OAuthConfig>) -> Response {
+    let scopes = vec!["channels:history", "chat:write", "commands"];
 
     let auth_url = format!(
         "https://slack.com/oauth/v2/authorize?client_id={}&scope={}",
         config.client_id,
         scopes.join(",")
     );
-    
+
     info!("OAuth開始: {}", auth_url);
     axum::response::Redirect::temporary(&auth_url).into_response()
 }
@@ -95,43 +87,38 @@ async fn oauth_start(
 async fn oauth_callback(
     State(config): State<OAuthConfig>,
     Query(params): Query<HashMap<String, String>>,
-) -> Response {
+) -> Result<Response, String> {
     if let Some(code) = params.get("code") {
         info!("OAuth認証コードを受信: {}", code);
-        
-        
-        let client = SlackClient::new(SlackClientHyperConnector::new());
-        
+
+        let connector = SlackClientHyperConnector::new()
+            .map_err(|e| format!("Failed to create connector: {}", e))?;
+        let client = SlackClient::new(connector);
+
         // アクセストークンの取得
         let result = client
-            .oauth_v2_access(
-                &SlackOAuthV2AccessRequest::new(
-                    &config.client_id,
-                    &config.client_secret,
-                    code,
-                    Some(&config.redirect_uri),
-                )
-            )
+            .oauth2_access(&SlackOAuthV2AccessTokenRequest::new(
+                config.client_id.as_str().into(),
+                config.client_secret.as_str().into(),
+                code.into(),
+            ))
             .await;
 
         match result {
             Ok(token_response) => {
-                if let Some(team) = &token_response.team {
-                    let mut storage = config.token_storage.write().await;
-                    storage.store_token(team.id.clone(), token_response);
-                    info!("チーム {} のトークンを保存しました", team.id);
-                    "OAuth認証成功！".into_response()
-                } else {
-                    error!("チーム情報が見つかりません");
-                    "OAuth認証エラー: チーム情報が見つかりません".into_response()
-                }
+                let team_info = token_response.team.clone();
+                let team_id = team_info.id.to_string();
+                let mut storage = config.token_storage.write().await;
+                storage.store_token(team_id.clone(), token_response);
+                info!("チーム {} のトークンを保存しました", team_id);
+                Ok("OAuth認証成功！".into_response())
             }
             Err(e) => {
                 error!("OAuth認証エラー: {}", e);
-                format!("OAuth認証エラー: {}", e).into_response()
+                Ok(format!("OAuth認証エラー: {}", e).into_response())
             }
         }
     } else {
-        "認証コードが見つかりません".into_response()
+        Ok("認証コードが見つかりません".into_response())
     }
 }

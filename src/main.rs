@@ -16,22 +16,19 @@ use crate::oauth::{oauth_router, OAuthConfig};
 #[tokio::main]
 async fn main() {
     // Initialize logging
-    let subscriber = FmtSubscriber::builder()
+    FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .compact()
         .init();
 
-    let mut app = Router::new()
-        .route("/health", get(|| async { "OK" }));
+    let mut app = Router::new().route("/health", get(|| async { "OK" }));
 
     #[cfg(feature = "oauth")]
     {
         // OAuth設定の初期化
         let oauth_config = OAuthConfig::new(
-            std::env::var("SLACK_CLIENT_ID")
-                .expect("SLACK_CLIENT_IDが設定されていません"),
-            std::env::var("SLACK_CLIENT_SECRET")
-                .expect("SLACK_CLIENT_SECRETが設定されていません"),
+            std::env::var("SLACK_CLIENT_ID").expect("SLACK_CLIENT_IDが設定されていません"),
+            std::env::var("SLACK_CLIENT_SECRET").expect("SLACK_CLIENT_SECRETが設定されていません"),
             "http://localhost:3000/oauth/callback".to_string(),
         );
 

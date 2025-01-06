@@ -10,6 +10,8 @@ tokio = { version = "1.35.0", features = ["full"] }
 axum = { version = "0.7.9" }
 tracing = "0.1.40"
 tracing-subscriber = "0.3"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 dotenvy = "0.15"
@@ -17,5 +19,5 @@ dotenvy = "0.15"
 [features]
 default = ["socket_mode", "events", "oauth"]
 socket_mode = ["slack-morphism/hyper"]
-events = []
-oauth = []
+events = ["dep:serde", "dep:serde_json"]
+oauth = ["dep:serde", "dep:serde_json"]
