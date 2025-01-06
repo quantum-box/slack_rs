@@ -1,3 +1,4 @@
+#[cfg(feature = "oauth")]
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Response},
@@ -12,12 +13,14 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{error, info};
 
+#[cfg(feature = "oauth")]
 // トークンストレージ
 #[derive(Default)]
 pub struct TokenStorage {
     tokens: HashMap<String, SlackOAuthV2AccessResponse>,
 }
 
+#[cfg(feature = "oauth")]
 impl TokenStorage {
     pub fn new() -> Self {
         Self {
@@ -35,6 +38,7 @@ impl TokenStorage {
     }
 }
 
+#[cfg(feature = "oauth")]
 // OAuth設定
 #[derive(Clone)]
 pub struct OAuthConfig {
@@ -44,6 +48,7 @@ pub struct OAuthConfig {
     token_storage: Arc<RwLock<TokenStorage>>,
 }
 
+#[cfg(feature = "oauth")]
 impl OAuthConfig {
     pub fn new(client_id: String, client_secret: String, redirect_uri: String) -> Self {
         Self {
@@ -55,6 +60,7 @@ impl OAuthConfig {
     }
 }
 
+#[cfg(feature = "oauth")]
 // OAuthルーターの設定
 pub fn oauth_router(config: OAuthConfig) -> Router {
     Router::new()
@@ -63,6 +69,7 @@ pub fn oauth_router(config: OAuthConfig) -> Router {
         .with_state(config)
 }
 
+#[cfg(feature = "oauth")]
 // OAuth開始ハンドラー
 async fn oauth_start(
     State(config): State<OAuthConfig>,
@@ -83,6 +90,7 @@ async fn oauth_start(
     axum::response::Redirect::temporary(&auth_url).into_response()
 }
 
+#[cfg(feature = "oauth")]
 // OAuthコールバックハンドラー
 async fn oauth_callback(
     State(config): State<OAuthConfig>,

@@ -1,3 +1,4 @@
+#[cfg(feature = "events")]
 use axum::{
     extract::State,
     response::{IntoResponse, Response},
@@ -13,6 +14,7 @@ use tracing::{error, info};
 
 use crate::oauth::OAuthConfig;
 
+#[cfg(feature = "events")]
 #[derive(Debug, Deserialize)]
 struct SlackEventWrapper {
     #[serde(rename = "type")]
@@ -22,6 +24,7 @@ struct SlackEventWrapper {
     team_id: Option<String>,
 }
 
+#[cfg(feature = "events")]
 #[derive(Debug, Deserialize)]
 struct SlackEvent {
     #[serde(rename = "type")]
@@ -31,17 +34,20 @@ struct SlackEvent {
     user: Option<String>,
 }
 
+#[cfg(feature = "events")]
 #[derive(Debug, Serialize)]
 struct ChallengeResponse {
     challenge: String,
 }
 
+#[cfg(feature = "events")]
 pub fn events_router(config: OAuthConfig) -> Router {
     Router::new()
         .route("/slack/events", post(handle_slack_event))
         .with_state(config)
 }
 
+#[cfg(feature = "events")]
 async fn handle_slack_event(
     State(config): State<OAuthConfig>,
     Json(payload): Json<SlackEventWrapper>,
@@ -73,6 +79,7 @@ async fn handle_slack_event(
     "ok".into_response()
 }
 
+#[cfg(feature = "events")]
 async fn handle_message_event(event: SlackEvent, team_id: Option<String>, config: OAuthConfig) {
     if let (Some(channel), Some(team_id)) = (event.channel, team_id) {
         let client = SlackClient::new(SlackClientHyperConnector::new());
@@ -95,6 +102,7 @@ async fn handle_message_event(event: SlackEvent, team_id: Option<String>, config
     }
 }
 
+#[cfg(feature = "events")]
 async fn handle_app_mention_event(event: SlackEvent, team_id: Option<String>, config: OAuthConfig) {
     if let (Some(channel), Some(team_id)) = (event.channel, team_id) {
         let client = SlackClient::new(SlackClientHyperConnector::new());
