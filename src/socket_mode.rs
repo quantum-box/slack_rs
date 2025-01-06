@@ -6,12 +6,13 @@ use slack_morphism::prelude::*;
 use slack_morphism::socket_mode::{
     SlackClientSocketModeConfig, SlackClientSocketModeListener, SlackSocketModeListenerCallbacks,
 };
+use slack_morphism::hyper_tokio::{SlackClientHyperConnector, SlackClientHyperConnectorHttpsDefault};
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
 
-/// Type alias for a Slack client using the hyper connector
-type SlackHyperClient = SlackClient<SlackClientHyperConnector>;
+/// Type alias for a Slack client using the hyper connector with default HTTPS configuration
+type SlackHyperClient = SlackClient<SlackClientHyperConnector<SlackClientHyperConnectorHttpsDefault>>;
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
 /// A client for Slack's Socket Mode connections.
