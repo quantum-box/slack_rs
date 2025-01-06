@@ -21,8 +21,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Socket Mode client...");
 
     // Create and start the Socket Mode client
-    let client = SocketModeClient::new(&app_token);
-    client.connect().await?;
+    let socket_client = SocketModeClient::new(&app_token);
+    let slack_client = socket_client.connect().await?;
+
+    // Send a test message
+    info!("Sending test message...");
+    socket_client.send_test_message(slack_client).await?;
+    info!("Test message sent successfully");
 
     // Keep the connection alive
     tokio::signal::ctrl_c().await?;

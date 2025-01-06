@@ -9,6 +9,10 @@ use slack_morphism::socket_mode::{
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
+use hyper::client::HttpConnector;
+use hyper_rustls::HttpsConnector;
+
+const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
 
 /// A client for Slack's Socket Mode connections.
 #[cfg(feature = "socket_mode")]
@@ -26,7 +30,7 @@ impl SocketModeClient {
     }
 
     /// Connects to Slack's Socket Mode WebSocket server.
-    pub async fn connect(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn connect(&self) -> Result<Arc<SlackClient<SlackClientHyperConnector<HttpsConnector<HttpConnector>>>>, Box<dyn Error>> {
         let http_client = SlackClientHyperConnector::new()?;
         let client = Arc::new(SlackClient::new(http_client));
 
@@ -57,8 +61,30 @@ impl SocketModeClient {
         let listener = SlackClientSocketModeListener::new(&config, env, callbacks);
 
         info!("Connected to Slack Socket Mode");
-        listener.listen_for(&token).await?;
+        tokio::spawn(async move {
+            if let Err(e) = listener.listen_for(&token).await {
+                info!("Socket mode listener error: {:?}", e);
+            }
+        });
 
+        Ok(client)
+    }
+
+    /// Sends a test message to verify the connection is working
+    pub async fn send_test_message(&self, client: Arc<SlackClient<SlackClientHyperConnector<HttpsConnector<HttpConnector>>>>) -> Result<(), Box<dyn Error>> {
+        let token = SlackApiToken::new(SlackApiTokenValue(self.app_token.clone()));
+        
+        let content = SlackMessageContent::new()
+            .with_text("Test message from Socket Mode client".into());
+        
+        let request = SlackApiChatPostMessageRequest::new(
+            SlackChannelId(TEST_CHANNEL.to_string()),
+            content,
+        );
+
+        let _response = client.chat_post_message(&request, &token).await?;
+        info!("Test message sent successfully");
+        
         Ok(())
     }
 }
