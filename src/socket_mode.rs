@@ -9,7 +9,7 @@ use slack_morphism::socket_mode::{
 use std::error::Error;
 use std::sync::Arc;
 use tracing::info;
-use hyper::client::conn::HttpConnector;
+use hyper::client::HttpConnector;
 use hyper_rustls::HttpsConnector;
 
 const TEST_CHANNEL: &str = "C06MYKV9YS4"; // Replace with your test channel ID
