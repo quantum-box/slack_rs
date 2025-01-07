@@ -1,22 +1,24 @@
 use axum::{
-    extract::{State, RawBody},
+    body::Bytes,
+    extract::{State},
     http::StatusCode,
     routing::post,
     Router,
 };
-use serde::Deserialize;
-use slack_morphism::signature_verifier::*;
+use hmac::Mac;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing;
 
-#[derive(Debug, Deserialize)]
-struct SlackEvent {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SlackEvent {
     #[serde(rename = "type")]
     event_type: String,
     event: Option<SlackMessageEvent>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SlackMessageEvent {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SlackMessageEvent {
     #[serde(rename = "type")]
     event_type: String,
     channel: String,
@@ -30,10 +32,11 @@ pub struct AppState {
     pub signing_secret: String,
 }
 
+#[axum::debug_handler]
 pub async fn slack_events_handler(
     State(app_state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
-    RawBody(body): RawBody,
+    body: Bytes,
 ) -> StatusCode {
     let timestamp = headers.get("X-Slack-Request-Timestamp");
     let signature = headers.get("X-Slack-Signature");
@@ -42,39 +45,40 @@ pub async fn slack_events_handler(
     if let (Some(ts), Some(sig)) = (timestamp, signature) {
         let ts_str = ts.to_str().unwrap_or("");
         let sig_str = sig.to_str().unwrap_or("");
-        let verifier = SlackEventSignatureVerifier::new(&app_state.signing_secret);
-        let body_bytes = body.bytes().await.unwrap_or_default();
-        let body_str = String::from_utf8_lossy(&body_bytes);
+        // Verify signature using HMAC-SHA256
+        let base_string = format!("v0:{}:{}", ts_str, String::from_utf8_lossy(&body));
+        let mut mac = <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(app_state.signing_secret.as_bytes())
+            .expect("HMAC can take key of any size");
+        mac.update(base_string.as_bytes());
+        let result = mac.finalize();
+        let expected_sig = format!("v0={}", hex::encode(result.into_bytes()));
         
-        match verifier.verify(ts_str, body_str.as_ref(), sig_str) {
-            Ok(_) => {
-                // イベントをデシリアライズ
-                match serde_json::from_slice::<SlackEvent>(&body_bytes) {
-                    Ok(event) => {
-                        if let Some(message_event) = event.event {
-                            if message_event.event_type == "message" {
-                                tracing::info!(
-                                    "Received message event: channel={}, user={:?}, text={:?}",
-                                    message_event.channel,
-                                    message_event.user,
-                                    message_event.text
-                                );
-                                return StatusCode::OK;
-                            }
+        if sig_str == expected_sig {
+            // Parse JSON after signature verification
+            match serde_json::from_slice::<SlackEvent>(&body) {
+                Ok(event) => {
+                    if let Some(ref message_event) = event.event {
+                        if message_event.event_type == "message" {
+                            tracing::info!(
+                                "Received message event: channel={}, user={:?}, text={:?}",
+                                message_event.channel,
+                                message_event.user,
+                                message_event.text
+                            );
+                            return StatusCode::OK;
                         }
-                        tracing::debug!("Received non-message event: {:?}", event);
-                        StatusCode::OK
                     }
-                    Err(e) => {
-                        tracing::error!("Failed to parse Slack event: {}", e);
-                        StatusCode::BAD_REQUEST
-                    }
+                    tracing::debug!("Received non-message event: {:?}", event);
+                    StatusCode::OK
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to parse event JSON: {}", e);
+                    StatusCode::UNPROCESSABLE_ENTITY
                 }
             }
-            Err(e) => {
-                tracing::warn!("Invalid Slack signature: {}", e);
-                StatusCode::UNAUTHORIZED
-            }
+        } else {
+            tracing::warn!("Invalid Slack signature");
+            StatusCode::UNAUTHORIZED
         }
     } else {
         tracing::warn!("Missing required Slack headers");

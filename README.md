@@ -1,46 +1,66 @@
-# テンプレート
+# Slack RS
+
+Rustで実装されたSlack APIクライアントライブラリです。
 
 ## 実装タスク
 
 📝 **実装タスク一覧**
 
 ✅ 基本構造の実装
-- ✅ `[構造体/列挙型]`の定義
-- ✅ 基本的なメソッドの実装
-- 🔄 テストケースの作成
+- ✅ Slack Event構造体の定義
+- ✅ Webhookハンドラーの実装
+- ✅ テストケースの作成（署名検証、メッセージイベント）
 
-📝 主要機能の実装
-- 📝 [機能1]の実装
-- 📝 [機能2]の実装
-- 📝 エラーハンドリングの追加
+✅ 主要機能の実装
+- ✅ Slack Webhookエンドポイントの実装
+- ✅ イベント署名検証の実装
+- ✅ エラーハンドリングの追加
 
 📝 ユースケースの実装
-- 📝 [ユースケース1]の実装
-- 📝 [ユースケース2]の実装
-- 📝 統合テストの作成
+- ✅ メッセージイベントの処理
+- 📝 その他のイベントタイプの対応
+- ✅ 単体テストの作成
 
 ## 主要な要素
 
-- **[要素1]**: [説明]
-- **[要素2]**: [説明]
+- **Webhook Handler**: Slack Events APIからのイベントを受信・処理するエンドポイント
+- **署名検証**: Slackからのリクエストの真正性を検証する機能
+- **イベント処理**: 受信したイベントの種類に応じた処理の実装
 
-## `[構造体/列挙型の名前]` [構造体/列挙型]
+## 環境変数
 
-`[名前]` [構造体/列挙型]は、[目的を説明]します。
+- `SLACK_SIGNING_SECRET`: Slackアプリケーションの署名シークレット（必須）
+
+## `SlackEvent` 構造体
+
+`SlackEvent`構造体は、Slackから受信したイベントデータを表現します。
 
 ```rust
-pub [struct/enum] [名前] {
-    // フィールドや列挙子
+pub struct SlackEvent {
+    #[serde(rename = "type")]
+    event_type: String,
+    event: Option<SlackMessageEvent>,
+}
+
+pub struct SlackMessageEvent {
+    #[serde(rename = "type")]
+    event_type: String,
+    channel: String,
+    text: Option<String>,
+    user: Option<String>,
+    ts: String,
 }
 ```
 
-- `[フィールド/列挙子1]`: [説明]
-- `[フィールド/列挙子2]`: [説明]
+- `event_type`: イベントの種類（例: "event_callback"）
+- `event`: メッセージイベントの詳細情報
 
-### `[構造体/列挙型の名前]` のメソッド
+### Webhookエンドポイント
 
-- `[メソッド名]()`: [説明]
-- `[メソッド名]()`: [説明]
+- `/slack/events`: Slack Events APIからのイベントを受信するエンドポイント
+  - POSTリクエストを受け付け
+  - 署名検証を実施
+  - イベントの種類に応じた処理を実行
 
 ## PlantUML ダイアグラム
 
