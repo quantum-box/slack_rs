@@ -38,16 +38,10 @@ pub async fn handle_push_event(
 }
 
 pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
-    let connector = hyper_rustls::HttpsConnectorBuilder::new()
-        .with_native_roots()
-        .https_only()
-        .enable_http1()
-        .build();
-
     let listener = SlackEventsAxumListener::new(
         Arc::new(
             SlackClientEventsListenerEnvironment::new(
-                Arc::new(SlackClient::new(SlackClientHyperConnector::new(connector)))
+                Arc::new(SlackClient::new(SlackClientHyperConnector::new().expect("Failed to create HTTP connector")))
             )
         )
     );
