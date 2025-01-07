@@ -7,34 +7,8 @@ use axum::{
     extract::State,
 };
 use serde::{Deserialize, Serialize};
-use slack_morphism::{
-    prelude::*,
-    api::SlackSigningVerifier,
-};
+use slack_morphism::prelude::*;
 // SlackApiSignatureVerifier is already available through prelude
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct UrlVerification {
-    pub token: String,
-    pub challenge: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct EventCallback {
-    pub token: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub event: serde_json::Value,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum SlackEvent {
-    UrlVerification(UrlVerification),
-    EventCallback(EventCallback),
-}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -44,7 +18,7 @@ pub struct AppState {
 pub async fn handle_push_event(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(event): Json<SlackEvent>,
+    Json(event): Json<SlackPushEvent>,
 ) -> impl IntoResponse {
     // 署名の検証
     let signature = headers
@@ -59,20 +33,21 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    let verifier = SlackSigningVerifier::new(&state.signing_secret);
+    let verifier = SlackApiSigningVerifier::new(&state.signing_secret);
     if !verifier.verify(signature, timestamp, body_str.as_bytes()) {
         return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
     }
 
     match event {
-        SlackEvent::UrlVerification(url_ver) => {
+        SlackPushEvent::UrlVerification(url_ver) => {
             println!("URL検証イベントを受信: {}", url_ver.challenge);
             (StatusCode::OK, [(header::CONTENT_TYPE, "text/plain")], url_ver.challenge).into_response()
         }
-        SlackEvent::EventCallback(callback) => {
+        SlackPushEvent::CallbackEvent(callback) => {
             println!("イベントコールバックを受信: {:?}", callback);
             Json(serde_json::json!({})).into_response()
         }
+        _ => (StatusCode::OK, Json(serde_json::json!({}))).into_response(),
     }
 }
 
