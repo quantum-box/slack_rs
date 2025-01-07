@@ -2,13 +2,12 @@ use axum::{
     Router,
     routing::post,
     Json,
-    response::IntoResponse,
-    http::{StatusCode, HeaderMap},
+    response::{IntoResponse, Response},
+    http::{StatusCode, HeaderMap, header},
     extract::State,
 };
 use serde::Deserialize;
 use slack_morphism::prelude::*;
-use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 pub struct UrlVerification {
@@ -39,20 +38,41 @@ pub struct AppState {
 }
 
 pub async fn handle_push_event(
-    State(_state): State<AppState>,
-    _headers: HeaderMap,
+    State(state): State<AppState>,
+    headers: HeaderMap,
     Json(event): Json<SlackEvent>,
 ) -> impl IntoResponse {
-    // TODO: 署名の検証を実装
+    // 署名の検証
+    let signature = headers
+        .get("X-Slack-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let timestamp = headers
+        .get("X-Slack-Request-Timestamp")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let body_str = serde_json::to_string(&event).unwrap_or_default();
+    
+    if let Err(_) = state.signing_secret.verify_signature(signature, timestamp, &body_str) {
+        return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
+    }
 
     match event {
         SlackEvent::UrlVerification(url_ver) => {
             println!("URL検証イベントを受信: {}", url_ver.challenge);
-            (StatusCode::OK, Json(serde_json::json!({ "challenge": url_ver.challenge })))
+            let json = Json(serde_json::json!({ "challenge": url_ver.challenge }));
+            let mut response = Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(json.into_response().into_body())
+                .unwrap();
+            response
         }
         SlackEvent::EventCallback(callback) => {
             println!("イベントコールバックを受信: {:?}", callback);
-            (StatusCode::OK, Json(serde_json::json!({})))
+            Json(serde_json::json!({})).into_response()
         }
     }
 }
