@@ -7,7 +7,10 @@ use axum::{
     extract::State,
 };
 use serde::{Deserialize, Serialize};
-use slack_morphism::prelude::*;
+use slack_morphism::{
+    prelude::*,
+    api::verification::SlackVerificationToken,
+};
 // SlackApiSignatureVerifier is already available through prelude
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -56,7 +59,7 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    let token = SlackApiVerificationToken::new(
+    let token = SlackVerificationToken::new(
         signature,
         timestamp,
         body_str.as_bytes(),
