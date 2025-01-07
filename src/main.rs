@@ -56,7 +56,8 @@ async fn main() {
     info!("サーバーを開始します: {}", addr);
 
     // Start the server
-    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
         .await
         .unwrap();
 }
