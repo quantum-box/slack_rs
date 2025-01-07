@@ -26,7 +26,7 @@ async fn main() {
     let signing_secret = SlackSigningSecret::new(
         std::env::var("SLACK_SIGNING_SECRET")
             .expect("SLACK_SIGNING_SECRETが設定されていません")
-            .into()
+            .into(),
     );
     app = app.merge(create_webhook_app(signing_secret));
 

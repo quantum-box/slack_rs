@@ -1,13 +1,13 @@
 use axum::{
-    Router,
-    routing::post,
-    Json,
-    response::{IntoResponse, Response},
     body::Body,
-    http::{StatusCode, HeaderMap, header},
     extract::State,
+    http::{header, HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
 };
 use slack_morphism::prelude::*;
+use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
 // SlackApiSignatureVerifier is already available through prelude
 
 #[derive(Clone)]
@@ -22,29 +22,36 @@ pub async fn handle_push_event(
 ) -> impl IntoResponse {
     // 署名の検証
     let signature = headers
-        .get("X-Slack-Signature")
+        .get(SlackEventSignatureVerifier::SLACK_SIGNED_HASH_HEADER)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
     let timestamp = headers
-        .get("X-Slack-Request-Timestamp")
+        .get(SlackEventSignatureVerifier::SLACK_SIGNED_TIMESTAMP)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
-    
+
     // 署名の検証
-    // TODO: Implement proper signature verification
-    let _signature = signature;
-    let _timestamp = timestamp;
+    let verifier = SlackEventSignatureVerifier::new(&state.signing_secret);
+    let verification_result = verifier.verify(signature, &body_str, timestamp).is_ok();
+
+    if !verification_result {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::from("Invalid signature"))
+            .unwrap();
+    }
 
     match event {
         SlackPushEvent::UrlVerification(url_ver) => {
             println!("URL検証イベントを受信: {}", url_ver.challenge);
+            let challenge_json = serde_json::json!({ "challenge": url_ver.challenge });
             Response::builder()
                 .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "text/plain")
-                .body(Body::from(url_ver.challenge))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_string(&challenge_json).unwrap()))
                 .unwrap()
         }
         SlackPushEvent::EventCallback(callback) => {
