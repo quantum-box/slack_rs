@@ -32,8 +32,10 @@ async fn main() {
     info!("サーバーを開始します: {}", addr);
 
     // サーバーの起動
-    axum::Server::bind(&addr)
-        .serve(router.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(
+        tokio::net::TcpListener::bind(addr).await.unwrap(),
+        router.into_make_service(),
+    )
+    .await
+    .unwrap();
 }
