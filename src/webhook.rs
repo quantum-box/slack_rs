@@ -6,10 +6,11 @@ use axum::{
     http::{StatusCode, HeaderMap, header},
     extract::State,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use slack_morphism::prelude::*;
+use slack_morphism::crypto::hmac_sha256;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UrlVerification {
     pub token: String,
     pub challenge: String,
@@ -17,7 +18,7 @@ pub struct UrlVerification {
     pub event_type: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct EventCallback {
     pub token: String,
     #[serde(rename = "type")]
@@ -25,7 +26,7 @@ pub struct EventCallback {
     pub event: serde_json::Value,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum SlackEvent {
     UrlVerification(UrlVerification),
@@ -55,18 +56,21 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    if let Err(_) = state.signing_secret.verify_signature(signature, timestamp, &body_str) {
+    let verification = SlackRequestVerification::new(
+        signature,
+        timestamp,
+        &body_str,
+        &state.signing_secret,
+    );
+    
+    if verification.is_err() {
         return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
     }
 
     match event {
         SlackEvent::UrlVerification(url_ver) => {
             println!("URL検証イベントを受信: {}", url_ver.challenge);
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "text/plain")
-                .body(url_ver.challenge)
-                .unwrap()
+            (StatusCode::OK, [(header::CONTENT_TYPE, "text/plain")], url_ver.challenge).into_response()
         }
         SlackEvent::EventCallback(callback) => {
             println!("イベントコールバックを受信: {:?}", callback);
