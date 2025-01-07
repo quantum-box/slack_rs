@@ -13,12 +13,10 @@ async fn main() {
         .init();
 
     // Slack署名シークレットを環境変数から取得
-    let signing_secret = env::var("SLACK_SIGNING_SECRET")
-        .expect("SLACK_SIGNING_SECRET must be set");
+    let signing_secret =
+        env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRET must be set");
 
-    let state = Arc::new(AppState {
-        signing_secret,
-    });
+    let state = Arc::new(AppState { signing_secret });
 
     // Webhookルーターを初期化
     let app = slack_router().with_state(state);

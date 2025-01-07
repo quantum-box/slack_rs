@@ -5,7 +5,7 @@ extern crate tracing;
 
 pub mod webhook;
 
-pub use webhook::{AppState, slack_router};
+pub use webhook::{slack_router, AppState};
 
 #[cfg(test)]
 mod webhook_test;

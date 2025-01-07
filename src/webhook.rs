@@ -1,10 +1,4 @@
-use axum::{
-    body::Bytes,
-    extract::{State},
-    http::StatusCode,
-    routing::post,
-    Router,
-};
+use axum::{body::Bytes, extract::State, http::StatusCode, routing::post, Router};
 use hmac::Mac;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -47,12 +41,13 @@ pub async fn slack_events_handler(
         let sig_str = sig.to_str().unwrap_or("");
         // Verify signature using HMAC-SHA256
         let base_string = format!("v0:{}:{}", ts_str, String::from_utf8_lossy(&body));
-        let mut mac = <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(app_state.signing_secret.as_bytes())
-            .expect("HMAC can take key of any size");
+        let mut mac =
+            <hmac::Hmac<sha2::Sha256> as Mac>::new_from_slice(app_state.signing_secret.as_bytes())
+                .expect("HMAC can take key of any size");
         mac.update(base_string.as_bytes());
         let result = mac.finalize();
         let expected_sig = format!("v0={}", hex::encode(result.into_bytes()));
-        
+
         if sig_str == expected_sig {
             // Parse JSON after signature verification
             match serde_json::from_slice::<SlackEvent>(&body) {

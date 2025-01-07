@@ -12,12 +12,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let signing_secret = env::var("SLACK_SIGNING_SECRET")
-        .expect("SLACK_SIGNING_SECRET must be set");
+    let signing_secret =
+        env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRET must be set");
 
-    let state = Arc::new(AppState {
-        signing_secret,
-    });
+    let state = Arc::new(AppState { signing_secret });
 
     let app = slack_router().with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
