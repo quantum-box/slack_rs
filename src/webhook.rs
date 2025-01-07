@@ -4,15 +4,12 @@ use axum::{
     Extension,
     response::IntoResponse,
     http::{StatusCode, Response},
-    handler::Handler,
 };
 use slack_morphism::prelude::*;
 use std::sync::Arc;
 
-#[axum::debug_handler]
-
 pub async fn handle_push_event(
-    Extension(_env): Extension<Arc<SlackClientEventsListenerEnvironment<SlackClientHyperConnector<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>>>>>,
+    Extension(_env): Extension<Arc<SlackClientEventsListenerEnvironment>>,
     Extension(event): Extension<SlackPushEvent>,
 ) -> impl IntoResponse {
     println!("Received push event: {:?}", event);
@@ -41,22 +38,23 @@ pub async fn handle_push_event(
 }
 
 pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
+    let client = SlackClient::new(
+        SlackClientHyperConnector::new()
+            .expect("Failed to create HTTP connector")
+    );
     let listener = SlackEventsAxumListener::new(
         Arc::new(
-            SlackClientEventsListenerEnvironment::new(
-                Arc::new(SlackClient::new(SlackClientHyperConnector::new().expect("Failed to create HTTP connector")))
-            )
+            SlackClientEventsListenerEnvironment::new(Arc::new(client))
         )
     );
 
     Router::new()
         .route(
             "/push",
-            post(handle_push_event)
-                .layer(
-                    listener
-                        .events_layer(&signing_secret)
-                        .with_event_extractor(SlackEventsExtractors::push_event())
-                )
+            post(handle_push_event).layer(
+                listener
+                    .events_layer(&signing_secret)
+                    .with_event_extractor(SlackEventsExtractors::push_event())
+            )
         )
 }
