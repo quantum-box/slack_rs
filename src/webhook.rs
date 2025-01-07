@@ -8,8 +8,12 @@ use axum::{
 use slack_morphism::prelude::*;
 use std::sync::Arc;
 
+type SlackEnv = SlackClientEventsListenerEnvironment<SlackClientHyperConnector>;
+
+#[axum::debug_handler]
+
 pub async fn handle_push_event(
-    Extension(_env): Extension<Arc<SlackClientEventsListenerEnvironment>>,
+    Extension(_env): Extension<Arc<SlackEnv>>,
     Extension(event): Extension<SlackPushEvent>,
 ) -> impl IntoResponse {
     println!("Received push event: {:?}", event);
