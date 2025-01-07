@@ -5,8 +5,12 @@ use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
+use ngrok::prelude::*;
+
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
+
     // ロギングの初期化
     FmtSubscriber::builder()
         .with_max_level(Level::INFO)
@@ -28,9 +32,24 @@ async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     info!("サーバーを開始します: {}", addr);
 
+    let tun = ngrok::Session::builder()
+        // Read the token from the NGROK_AUTHTOKEN environment variable
+        .authtoken_from_env()
+        // Connect the ngrok session
+        .connect()
+        .await?
+        // Start a tunnel with an HTTP edge
+        .http_endpoint()
+        .listen()
+        .await?;
+
+    info!("Tunnel URL: {}", tun.url());
+
     // サーバーの起動
-    axum::Server::bind(&addr)
-        .serve(router.into_make_service())
+    axum::Server::builder(tun)
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
+
+    Ok(())
 }
