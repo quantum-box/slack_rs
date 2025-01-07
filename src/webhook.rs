@@ -4,9 +4,12 @@ use axum::{
     Extension,
     response::IntoResponse,
     http::{StatusCode, Response},
+    handler::Handler,
 };
 use slack_morphism::prelude::*;
 use std::sync::Arc;
+
+#[axum::debug_handler]
 
 pub async fn handle_push_event(
     Extension(_env): Extension<Arc<SlackClientEventsListenerEnvironment<SlackClientHyperConnector<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>>>>>,
