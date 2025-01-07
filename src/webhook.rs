@@ -2,13 +2,13 @@ use axum::{
     Router,
     routing::post,
     Json,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     http::{StatusCode, HeaderMap, header},
     extract::State,
 };
 use serde::{Deserialize, Serialize};
 use slack_morphism::prelude::*;
-use slack_morphism::crypto::hmac_sha256;
+use slack_morphism::signature::SlackSignatureVerifier;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UrlVerification {
@@ -56,14 +56,8 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    let verification = SlackRequestVerification::new(
-        signature,
-        timestamp,
-        &body_str,
-        &state.signing_secret,
-    );
-    
-    if verification.is_err() {
+    let verifier = SlackSignatureVerifier::new(&state.signing_secret);
+    if !verifier.verify(signature, timestamp, body_str.as_bytes()) {
         return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
     }
 
