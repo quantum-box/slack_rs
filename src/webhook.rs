@@ -1,62 +1,65 @@
 use axum::{
     Router,
     routing::post,
-    Extension,
+    Json,
     response::IntoResponse,
-    http::{StatusCode, Response},
+    http::{StatusCode, HeaderMap},
+    extract::State,
 };
+use serde::Deserialize;
 use slack_morphism::prelude::*;
 use std::sync::Arc;
 
-type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
-type SlackEnv = SlackClientEventsListenerEnvironment<SlackClientHyperConnector<HttpsConnector>>;
+#[derive(Debug, Deserialize)]
+pub struct UrlVerification {
+    pub token: String,
+    pub challenge: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+}
 
-#[axum::debug_handler]
+#[derive(Debug, Deserialize)]
+pub struct EventCallback {
+    pub token: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub event: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum SlackEvent {
+    UrlVerification(UrlVerification),
+    EventCallback(EventCallback),
+}
+
+#[derive(Clone)]
+pub struct AppState {
+    pub signing_secret: SlackSigningSecret,
+}
 
 pub async fn handle_push_event(
-    Extension(_env): Extension<Arc<SlackEnv>>,
-    Extension(event): Extension<SlackPushEvent>,
+    State(_state): State<AppState>,
+    _headers: HeaderMap,
+    Json(event): Json<SlackEvent>,
 ) -> impl IntoResponse {
-    println!("Received push event: {:?}", event);
+    // TODO: 署名の検証を実装
+
     match event {
-        SlackPushEvent::UrlVerification(url_ver) => {
-            // SlackのURL検証用
-            Response::builder()
-                .status(StatusCode::OK)
-                .body(url_ver.challenge)
-                .unwrap()
+        SlackEvent::UrlVerification(url_ver) => {
+            println!("URL検証イベントを受信: {}", url_ver.challenge);
+            (StatusCode::OK, Json(serde_json::json!({ "challenge": url_ver.challenge })))
         }
-        SlackPushEvent::EventCallback(callback) => {
-            // メッセージイベントなどをここで確認
-            println!("Callback event: {:?}", callback);
-            // TODO: 必要に応じてwebhook先に通知する処理などを追加
-            Response::builder()
-                .status(StatusCode::OK)
-                .body(String::new())
-                .unwrap()
+        SlackEvent::EventCallback(callback) => {
+            println!("イベントコールバックを受信: {:?}", callback);
+            (StatusCode::OK, Json(serde_json::json!({})))
         }
-        _ => Response::builder()
-            .status(StatusCode::OK)
-            .body(String::new())
-            .unwrap(),
     }
 }
 
 pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
-    let connector = SlackClientHyperConnector::new()
-        .expect("Failed to create HTTP connector");
-    let client = SlackClient::new(connector.clone());
-    let listener = SlackEventsAxumListener::new(
-        Arc::new(
-            SlackClientEventsListenerEnvironment::new(Arc::new(client))
-        )
-    );
-
-    let events_layer = listener
-        .events_layer(&signing_secret)
-        .with_event_extractor(SlackEventsExtractors::push_event());
-
+    let state = AppState { signing_secret };
     Router::new()
         .route("/push", post(handle_push_event))
-        .layer(events_layer)
+        .with_state(state)
 }
