@@ -3,10 +3,10 @@ use axum::{
     routing::post,
     Json,
     response::IntoResponse,
-    http::{StatusCode, HeaderMap, header},
+    http::{StatusCode, HeaderMap, header, Response},
     extract::State,
 };
-use serde::{Deserialize, Serialize};
+use hyper::Body;
 use slack_morphism::prelude::*;
 // SlackApiSignatureVerifier is already available through prelude
 
@@ -33,21 +33,25 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    let verifier = SlackApiSigningVerifier::new(&state.signing_secret);
-    if !verifier.verify(signature, timestamp, body_str.as_bytes()) {
-        return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
+    // 署名の検証
+    if !state.signing_secret.verify_request(signature, timestamp, body_str.as_bytes()) {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::from("Invalid signature"))
+            .unwrap()
+            .into_response();
     }
 
     match event {
         SlackPushEvent::UrlVerification(url_ver) => {
             println!("URL検証イベントを受信: {}", url_ver.challenge);
-            (StatusCode::OK, [(header::CONTENT_TYPE, "text/plain")], url_ver.challenge).into_response()
+            Response::new(Body::from(url_ver.challenge))
         }
         SlackPushEvent::CallbackEvent(callback) => {
             println!("イベントコールバックを受信: {:?}", callback);
-            Json(serde_json::json!({})).into_response()
+            Response::new(Body::empty())
         }
-        _ => (StatusCode::OK, Json(serde_json::json!({}))).into_response(),
+        _ => Response::new(Body::empty()),
     }
 }
 
