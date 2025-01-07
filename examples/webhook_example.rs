@@ -7,16 +7,13 @@ use tracing_subscriber::FmtSubscriber;
 
 #[tokio::main]
 async fn main() {
-    // このファイルは基本的な使用例を示すためのものです。
-    // より詳細な使用例については examples/ ディレクトリを参照してください。
-
     // ロギングの初期化
     FmtSubscriber::builder()
         .with_max_level(Level::INFO)
         .compact()
         .init();
 
-    info!("基本的なWebhookサーバーを起動します");
+    info!("Webhookサーバーを起動します");
 
     // 環境変数からSlack署名シークレットを取得
     let signing_secret =

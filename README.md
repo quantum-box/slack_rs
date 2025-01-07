@@ -9,16 +9,30 @@ A user-friendly Slack SDK implementation using slack-morphism-rust.
   - :white_check_mark: メッセージ受信
   - :white_check_mark: コマンド対応
   - :white_check_mark: インタラクション対応
-- :arrows_counterclockwise: axumでのHTTPサーバー
-  - :memo: エンドポイント実装
+- :white_check_mark: axumでのHTTPサーバー
+  - :white_check_mark: Webhookエンドポイント実装
   - :memo: OAuth対応
-  - :memo: イベント受信
-- :memo: ドキュメント整備
-  - :memo: API使用例
-  - :memo: 環境変数設定
-  - :memo: テスト方法
+  - :white_check_mark: イベント受信
+- :white_check_mark: ドキュメント整備
+  - :white_check_mark: API使用例
+  - :white_check_mark: 環境変数設定
+  - :white_check_mark: テスト方法
 
 ## Features
+
+### Webhook Mode
+
+Webhookを使用してSlackイベントを受信するには、以下の手順で実行します：
+
+1. 環境変数の設定:
+```bash
+export SLACK_SIGNING_SECRET="your-signing-secret"
+```
+
+2. サンプルコードの実行:
+```bash
+cargo run --example webhook_example
+```
 
 ### Socket Mode
 
@@ -81,12 +95,48 @@ export SLACK_TEST_APP_TOKEN=xapp-your-token-here
 
 ### 基本的な使用例
 
+#### Webhookモード
+
 ```rust
-// Socket Modeを使用したメッセージ受信の例
+use slack_rs::create_app;
+use axum::{routing::get, Router};
+use slack_morphism::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    // 環境変数からSlack署名シークレットを取得
+    let signing_secret = std::env::var("SLACK_SIGNING_SECRET")
+        .expect("SLACK_SIGNING_SECRETが設定されていません");
+
+    // ルーターの設定
+    let router = Router::new()
+        .route("/health", get(|| async { "OK" }))
+        .merge(create_app(SlackSigningSecret::new(signing_secret.into())));
+
+    // サーバーの起動
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
+    axum::Server::bind(&addr)
+        .serve(router.into_make_service())
+        .await
+        .unwrap();
+}
+```
+
+#### Socket Modeを使用したメッセージ受信の例
 // ※実装完了後に追加予定
 ```
 
 ## コンポーネント構成
+
+### Webhookクライアント
+
+Webhookクライアントは、Slack Events APIからのイベントを受信・処理するための主要コンポーネントです。
+以下の機能を提供します：
+
+- イベント受信エンドポイント（`/push`）
+- Slack署名検証
+- イベントタイプに基づく処理の振り分け
+- URL検証チャレンジへの対応
 
 ### Socket Modeクライアント
 
