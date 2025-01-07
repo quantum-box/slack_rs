@@ -8,7 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use slack_morphism::prelude::*;
-use slack_morphism::signature::SlackSignatureVerifier;
+// SlackApiSignatureVerifier is already available through prelude
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UrlVerification {
@@ -56,8 +56,12 @@ pub async fn handle_push_event(
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
     
-    let verifier = SlackSignatureVerifier::new(&state.signing_secret);
-    if !verifier.verify(signature, timestamp, body_str.as_bytes()) {
+    let token = SlackApiVerificationToken::new(
+        signature,
+        timestamp,
+        body_str.as_bytes(),
+    );
+    if token.verify(&state.signing_secret).is_err() {
         return (StatusCode::UNAUTHORIZED, "Invalid signature").into_response();
     }
 
