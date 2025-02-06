@@ -130,13 +130,14 @@ impl MessageClient {
     ) -> Result<(), Box<dyn Error>> {
         let channel_ids: Vec<SlackChannelId> = channels
             .into_iter()
-            .map(|c| SlackChannelId::new(c))
+            .map(SlackChannelId::new)
             .collect();
         let req = SlackApiFilesUploadRequest::new()
             .with_channels(channel_ids)
             .with_filename(filename.into())
             .with_content(String::from_utf8_lossy(&file).into_owned());
         let session = self.client.open_session(&self.token);
+        #[allow(deprecated)]
         match session.files_upload(&req).await {
             Ok(_) => {
                 info!("ファイルをアップロードしました: {}", filename);
