@@ -1,7 +1,9 @@
+pub mod message;
 pub mod socket_mode;
 pub mod webhook;
 
 // Re-export commonly used items for public API
+pub use message::MessageClient;
 pub use webhook::{create_app, handle_push_event, AppState};
 
 // Re-export types from slack-morphism that are part of our public API

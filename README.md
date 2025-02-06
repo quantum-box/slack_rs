@@ -58,15 +58,15 @@ Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-
 - :memo: 環境変数設定の仕組み作成（SLACK_TEST_APP_TOKEN等）
 
 ### メッセージ送信機能
-- :memo: メッセージ送信の基本機能実装
-  - :memo: テキストメッセージの送信
-  - :memo: リッチメッセージ（ブロックキット）の送信
-  - :memo: ファイル添付機能
-  - :memo: スレッド返信機能
-  - :memo: メッセージの更新・削除機能
-- :memo: メッセージ送信のエラーハンドリング
-- :memo: レートリミット対応
-- :memo: メッセージ送信のユーティリティ関数の提供
+- :white_check_mark: メッセージ送信の基本機能実装
+  - :white_check_mark: テキストメッセージの送信
+  - :white_check_mark: リッチメッセージ（ブロックキット）の送信
+  - :white_check_mark: ファイル添付機能
+  - :white_check_mark: スレッド返信機能
+  - :white_check_mark: メッセージの更新・削除機能
+- :white_check_mark: メッセージ送信のエラーハンドリング
+- :white_check_mark: レートリミット対応
+- :white_check_mark: メッセージ送信のユーティリティ関数の提供
 
 ### Socket Mode実装
 - :memo: Socket Modeクライアントの基本構造体の定義
