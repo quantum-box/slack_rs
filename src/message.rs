@@ -154,9 +154,11 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore]
     async fn test_send_text_message() {
-        let token = SlackApiToken::new(SlackApiTokenValue("test-token".into()));
+        let token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKEN must be set");
+        let token = SlackApiToken::new(SlackApiTokenValue(token));
         let client = MessageClient::new(token);
-        assert!(true);
+        client.send_text("#general", "テストメッセージ").await.unwrap();
     }
 }
