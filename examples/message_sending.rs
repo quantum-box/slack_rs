@@ -39,10 +39,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .update_message("C087D6X8NM9", &message.ts.to_string(), "更新されたメッセージ")
+        .update_message(
+            "C087D6X8NM9",
+            &message.ts.to_string(),
+            "更新されたメッセージ",
+        )
         .await?;
     sleep(Duration::from_secs(2)).await;
-    client.delete_message("C087D6X8NM9", &message.ts.to_string()).await?;
+    client
+        .delete_message("C087D6X8NM9", &message.ts.to_string())
+        .await?;
 
     // ファイルのアップロード
     let file_content = "テストファイルの内容".as_bytes().to_vec();
