@@ -58,15 +58,84 @@ Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-
 - :memo: 環境変数設定の仕組み作成（SLACK_TEST_APP_TOKEN等）
 
 ### メッセージ送信機能
-- :memo: メッセージ送信の基本機能実装
-  - :memo: テキストメッセージの送信
-  - :memo: リッチメッセージ（ブロックキット）の送信
-  - :memo: ファイル添付機能
-  - :memo: スレッド返信機能
-  - :memo: メッセージの更新・削除機能
-- :memo: メッセージ送信のエラーハンドリング
-- :memo: レートリミット対応
-- :memo: メッセージ送信のユーティリティ関数の提供
+- :white_check_mark: メッセージ送信の基本機能実装
+  - :white_check_mark: テキストメッセージの送信
+  - :white_check_mark: リッチメッセージ（ブロックキット）の送信
+  - :white_check_mark: ファイル添付機能
+  - :white_check_mark: スレッド返信機能
+  - :white_check_mark: メッセージの更新・削除機能
+- :white_check_mark: メッセージ送信のエラーハンドリング
+- :white_check_mark: レートリミット対応
+- :white_check_mark: メッセージ送信のユーティリティ関数の提供
+
+#### 使用例
+```rust
+use slack_rs::{MessageClient, SlackApiToken, SlackApiTokenValue};
+use slack_morphism::blocks::{SlackBlock, SlackBlockText, SlackSectionBlock};
+
+// クライアントの初期化
+let token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKEN must be set");
+let token = SlackApiToken::new(SlackApiTokenValue(token));
+let client = MessageClient::new(token);
+
+// テキストメッセージの送信
+let message = client.send_text("C1234567890", "基本的なテキストメッセージ").await?;
+
+// ブロックキットを使用したメッセージ
+let blocks = vec![
+    SlackBlock::Section(
+        SlackSectionBlock::new().with_text(SlackBlockText::MarkDown("*太字* _斜体_ ~取り消し線~".into()))
+    ),
+    SlackBlock::Section(
+        SlackSectionBlock::new().with_text(SlackBlockText::Plain("プレーンテキスト".into()))
+    ),
+];
+client.send_blocks("C1234567890", blocks).await?;
+
+// スレッド返信
+client.reply_to_thread("C1234567890", &message.ts.to_string(), "スレッドへの返信").await?;
+
+// メッセージの更新と削除
+let message = client.send_text("C1234567890", "このメッセージは更新されます").await?;
+client.update_message("C1234567890", &message.ts.to_string(), "更新されたメッセージ").await?;
+client.delete_message("C1234567890", &message.ts.to_string()).await?;
+
+// ファイルのアップロード
+let file_content = "テストファイルの内容".as_bytes().to_vec();
+client.upload_file(vec!["C1234567890".to_string()], file_content, "test.txt").await?;
+```
+
+### 検証手順
+
+1. Botの設定
+   - 以下の権限が必要です：
+     - `channels:read`: チャンネル情報の読み取り
+     - `chat:write`: メッセージの送信
+     - `files:write`: ファイルのアップロード
+   - **重要**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
+     権限の更新は再インストール後に反映されます。
+
+2. チャンネルの準備
+   - チャンネルIDの確認方法：
+     1. Slackでチャンネルを開く
+     2. チャンネル名をクリック
+     3. 「チャンネルの詳細」の下部にチャンネルID（例：C1234567890）が表示されます
+   - Botをチャンネルに招待：
+     - `/invite @[BOT名]` コマンドを使用
+     または
+     - チャンネルの設定から「メンバーを追加する」でBotを追加
+
+3. 環境変数の設定
+```bash
+export SLACK_BOT_TOKEN=xoxb-your-token
+```
+
+4. サンプルコードの実行
+```bash
+cargo run --example message_sending
+```
+
+**注意**: チャンネルIDは実際のSlackワークスペースのチャンネルIDに置き換えてください。
 
 ### Socket Mode実装
 - :memo: Socket Modeクライアントの基本構造体の定義
