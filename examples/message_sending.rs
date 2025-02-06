@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // テキストメッセージの送信
     client
-        .send_text("#general", "基本的なテキストメッセージ")
+        .send_text("C06NXPX6XQX", "基本的なテキストメッセージ")
         .await?;
 
     // ブロックキットを使用したメッセージ
@@ -23,31 +23,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SlackSectionBlock::new().with_text(SlackBlockText::Plain("プレーンテキスト".into())),
         ),
     ];
-    client.send_blocks("#general", blocks).await?;
+    client.send_blocks("C06NXPX6XQX", blocks).await?;
 
     // スレッド返信
     let message = client
-        .send_text("#general", "スレッドの親メッセージ")
+        .send_text("C06NXPX6XQX", "スレッドの親メッセージ")
         .await?;
     client
-        .reply_to_thread("#general", &message.ts.to_string(), "スレッドへの返信")
+        .reply_to_thread("C06NXPX6XQX", &message.ts.to_string(), "スレッドへの返信")
         .await?;
 
     // メッセージの更新と削除
     let message = client
-        .send_text("#general", "このメッセージは更新されます")
+        .send_text("C06NXPX6XQX", "このメッセージは更新されます")
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .update_message("#general", &message.ts.to_string(), "更新されたメッセージ")
+        .update_message("C06NXPX6XQX", &message.ts.to_string(), "更新されたメッセージ")
         .await?;
     sleep(Duration::from_secs(2)).await;
-    client.delete_message("#general", &message.ts.to_string()).await?;
+    client.delete_message("C06NXPX6XQX", &message.ts.to_string()).await?;
 
     // ファイルのアップロード
     let file_content = "テストファイルの内容".as_bytes().to_vec();
     client
-        .upload_file(vec!["#general".to_string()], file_content, "test.txt")
+        .upload_file(vec!["C06NXPX6XQX".to_string()], file_content, "test.txt")
         .await?;
 
     Ok(())
