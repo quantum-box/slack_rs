@@ -1,4 +1,4 @@
-use slack_morphism::blocks::{SlackBlock, SlackBlockElement, SlackBlockText};
+use slack_morphism::blocks::{SlackBlock, SlackBlockText};
 use slack_rs::{MessageClient, SlackApiToken, SlackApiTokenValue};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -16,12 +16,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ブロックキットを使用したメッセージ
     let blocks = vec![
-        SlackBlock::Section(SlackBlockElement::new().with_text(SlackBlockText::Markdown(
-            "*太字* _斜体_ ~取り消し線~".into(),
-        ))),
         SlackBlock::Section(
-            SlackBlockElement::new()
-                .with_text(SlackBlockText::PlainText("プレーンテキスト".into())),
+            SlackBlockText::MarkDown("*太字* _斜体_ ~取り消し線~".into())
+        ),
+        SlackBlock::Section(
+            SlackBlockText::Plain("プレーンテキスト".into())
         ),
     ];
     client.send_blocks("#general", blocks).await?;
