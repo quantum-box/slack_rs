@@ -128,10 +128,8 @@ impl MessageClient {
         file: Vec<u8>,
         filename: &str,
     ) -> Result<(), Box<dyn Error>> {
-        let channel_ids: Vec<SlackChannelId> = channels
-            .into_iter()
-            .map(SlackChannelId::new)
-            .collect();
+        let channel_ids: Vec<SlackChannelId> =
+            channels.into_iter().map(SlackChannelId::new).collect();
         let req = SlackApiFilesUploadRequest::new()
             .with_channels(channel_ids)
             .with_filename(filename.into())
