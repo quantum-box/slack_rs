@@ -112,6 +112,8 @@ client.upload_file(vec!["C1234567890".to_string()], file_content, "test.txt").aw
      - `channels:read`: チャンネル情報の読み取り
      - `chat:write`: メッセージの送信
      - `files:write`: ファイルのアップロード
+   - **重要**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
+     権限の更新は再インストール後に反映されます。
 
 2. チャンネルの準備
    - チャンネルIDの確認方法：
