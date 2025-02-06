@@ -105,6 +105,34 @@ let file_content = "テストファイルの内容".as_bytes().to_vec();
 client.upload_file(vec!["C1234567890".to_string()], file_content, "test.txt").await?;
 ```
 
+### 検証手順
+
+1. Botの設定
+   - 以下の権限が必要です：
+     - `channels:read`: チャンネル情報の読み取り
+     - `chat:write`: メッセージの送信
+     - `files:write`: ファイルのアップロード
+
+2. チャンネルの準備
+   - チャンネルIDの確認方法：
+     1. Slackでチャンネルを開く
+     2. チャンネル名をクリック
+     3. 「チャンネルの詳細」の下部にチャンネルID（例：C1234567890）が表示されます
+   - Botをチャンネルに招待：
+     - `/invite @[BOT名]` コマンドを使用
+     または
+     - チャンネルの設定から「メンバーを追加する」でBotを追加
+
+3. 環境変数の設定
+```bash
+export SLACK_BOT_TOKEN=xoxb-your-token
+```
+
+4. サンプルコードの実行
+```bash
+cargo run --example message_sending
+```
+
 **注意**: チャンネルIDは実際のSlackワークスペースのチャンネルIDに置き換えてください。
 
 ### Socket Mode実装
