@@ -79,17 +79,33 @@ let token = SlackApiToken::new(SlackApiTokenValue(token));
 let client = MessageClient::new(token);
 
 // テキストメッセージの送信
-let message = client.send_text("#general", "Hello, World!").await?;
+let message = client.send_text("C1234567890", "基本的なテキストメッセージ").await?;
 
 // ブロックキットを使用したメッセージ
-let blocks = vec![SlackBlock::Section(
-    SlackSectionBlock::new().with_text(SlackBlockText::MarkDown("*Bold* _italic_ ~strike~".into()))
-)];
-client.send_blocks("#general", blocks).await?;
+let blocks = vec![
+    SlackBlock::Section(
+        SlackSectionBlock::new().with_text(SlackBlockText::MarkDown("*太字* _斜体_ ~取り消し線~".into()))
+    ),
+    SlackBlock::Section(
+        SlackSectionBlock::new().with_text(SlackBlockText::Plain("プレーンテキスト".into()))
+    ),
+];
+client.send_blocks("C1234567890", blocks).await?;
 
 // スレッド返信
-client.reply_to_thread("#general", &message.ts, "スレッドへの返信").await?;
+client.reply_to_thread("C1234567890", &message.ts.to_string(), "スレッドへの返信").await?;
+
+// メッセージの更新と削除
+let message = client.send_text("C1234567890", "このメッセージは更新されます").await?;
+client.update_message("C1234567890", &message.ts.to_string(), "更新されたメッセージ").await?;
+client.delete_message("C1234567890", &message.ts.to_string()).await?;
+
+// ファイルのアップロード
+let file_content = "テストファイルの内容".as_bytes().to_vec();
+client.upload_file(vec!["C1234567890".to_string()], file_content, "test.txt").await?;
 ```
+
+**注意**: チャンネルIDは実際のSlackワークスペースのチャンネルIDに置き換えてください。
 
 ### Socket Mode実装
 - :memo: Socket Modeクライアントの基本構造体の定義
