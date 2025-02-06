@@ -1,7 +1,7 @@
-use slack_morphism::prelude::*;
-use slack_morphism::hyper_tokio::SlackClientHyperConnector;
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
+use slack_morphism::hyper_tokio::SlackClientHyperConnector;
+use slack_morphism::prelude::*;
 use std::error::Error;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -16,8 +16,8 @@ pub struct MessageClient {
 #[cfg(feature = "message")]
 impl MessageClient {
     pub fn new(token: SlackApiToken) -> Self {
-        let connector = SlackClientHyperConnector::new()
-            .expect("HTTPクライアントの作成に失敗しました");
+        let connector =
+            SlackClientHyperConnector::new().expect("HTTPクライアントの作成に失敗しました");
         let client = Arc::new(SlackClient::new(connector));
         Self { client, token }
     }
@@ -27,12 +27,20 @@ impl MessageClient {
         self.send_message(channel, content).await
     }
 
-    pub async fn send_blocks(&self, channel: &str, blocks: Vec<SlackBlock>) -> Result<(), Box<dyn Error>> {
+    pub async fn send_blocks(
+        &self,
+        channel: &str,
+        blocks: Vec<SlackBlock>,
+    ) -> Result<(), Box<dyn Error>> {
         let content = SlackMessageContent::new().with_blocks(blocks);
         self.send_message(channel, content).await
     }
 
-    async fn send_message(&self, channel: &str, content: SlackMessageContent) -> Result<(), Box<dyn Error>> {
+    async fn send_message(
+        &self,
+        channel: &str,
+        content: SlackMessageContent,
+    ) -> Result<(), Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content);
         let session = self.client.open_session(&self.token);
@@ -48,16 +56,23 @@ impl MessageClient {
         }
     }
 
-    pub async fn reply_to_thread(&self, channel: &str, thread_ts: &str, text: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn reply_to_thread(
+        &self,
+        channel: &str,
+        thread_ts: &str,
+        text: &str,
+    ) -> Result<(), Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
-        let content = SlackMessageContent::new()
-            .with_text(text.into());
+        let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content)
             .with_thread_ts(SlackTs::new(thread_ts.into()));
         let session = self.client.open_session(&self.token);
         match session.chat_post_message(&req).await {
             Ok(_) => {
-                info!("スレッドに返信しました: {} (thread_ts: {})", channel, thread_ts);
+                info!(
+                    "スレッドに返信しました: {} (thread_ts: {})",
+                    channel, thread_ts
+                );
                 Ok(())
             }
             Err(e) => {
@@ -67,7 +82,12 @@ impl MessageClient {
         }
     }
 
-    pub async fn update_message(&self, channel: &str, ts: &str, text: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn update_message(
+        &self,
+        channel: &str,
+        ts: &str,
+        text: &str,
+    ) -> Result<(), Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let ts = SlackTs::new(ts.into());
         let content = SlackMessageContent::new().with_text(text.into());
@@ -102,8 +122,14 @@ impl MessageClient {
         }
     }
 
-    pub async fn upload_file(&self, channels: Vec<String>, file: Vec<u8>, filename: &str) -> Result<(), Box<dyn Error>> {
-        let channel_ids: Vec<SlackChannelId> = channels.into_iter()
+    pub async fn upload_file(
+        &self,
+        channels: Vec<String>,
+        file: Vec<u8>,
+        filename: &str,
+    ) -> Result<(), Box<dyn Error>> {
+        let channel_ids: Vec<SlackChannelId> = channels
+            .into_iter()
             .map(|c| SlackChannelId::new(c))
             .collect();
         let req = SlackApiFilesUploadRequest::new()
