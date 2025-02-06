@@ -22,7 +22,11 @@ impl MessageClient {
         Self { client, token }
     }
 
-    pub async fn send_text(&self, channel: &str, text: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn send_text(
+        &self,
+        channel: &str,
+        text: &str,
+    ) -> Result<SlackApiChatPostMessageResponse, Box<dyn Error>> {
         let content = SlackMessageContent::new().with_text(text.into());
         self.send_message(channel, content).await
     }
@@ -31,7 +35,7 @@ impl MessageClient {
         &self,
         channel: &str,
         blocks: Vec<SlackBlock>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<SlackApiChatPostMessageResponse, Box<dyn Error>> {
         let content = SlackMessageContent::new().with_blocks(blocks);
         self.send_message(channel, content).await
     }
@@ -40,14 +44,14 @@ impl MessageClient {
         &self,
         channel: &str,
         content: SlackMessageContent,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<SlackApiChatPostMessageResponse, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content);
         let session = self.client.open_session(&self.token);
         match session.chat_post_message(&req).await {
-            Ok(_) => {
+            Ok(response) => {
                 info!("メッセージを送信しました: {}", channel);
-                Ok(())
+                Ok(response)
             }
             Err(e) => {
                 warn!("メッセージの送信に失敗しました: {:?}", e);
@@ -61,19 +65,19 @@ impl MessageClient {
         channel: &str,
         thread_ts: &str,
         text: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<SlackApiChatPostMessageResponse, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content)
             .with_thread_ts(SlackTs::new(thread_ts.into()));
         let session = self.client.open_session(&self.token);
         match session.chat_post_message(&req).await {
-            Ok(_) => {
+            Ok(response) => {
                 info!(
                     "スレッドに返信しました: {} (thread_ts: {})",
                     channel, thread_ts
                 );
-                Ok(())
+                Ok(response)
             }
             Err(e) => {
                 warn!("スレッドへの返信に失敗しました: {:?}", e);
@@ -87,16 +91,16 @@ impl MessageClient {
         channel: &str,
         ts: &str,
         text: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<SlackApiChatUpdateResponse, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let ts = SlackTs::new(ts.into());
         let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatUpdateRequest::new(channel_id, content, ts.clone());
         let session = self.client.open_session(&self.token);
         match session.chat_update(&req).await {
-            Ok(_) => {
+            Ok(response) => {
                 info!("メッセージを更新しました: {} (ts: {})", channel, ts);
-                Ok(())
+                Ok(response)
             }
             Err(e) => {
                 warn!("メッセージの更新に失敗しました: {:?}", e);
@@ -105,15 +109,19 @@ impl MessageClient {
         }
     }
 
-    pub async fn delete_message(&self, channel: &str, ts: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn delete_message(
+        &self,
+        channel: &str,
+        ts: &str,
+    ) -> Result<SlackApiChatDeleteResponse, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let ts = SlackTs::new(ts.into());
         let req = SlackApiChatDeleteRequest::new(channel_id, ts.clone());
         let session = self.client.open_session(&self.token);
         match session.chat_delete(&req).await {
-            Ok(_) => {
+            Ok(response) => {
                 info!("メッセージを削除しました: {} (ts: {})", channel, ts);
-                Ok(())
+                Ok(response)
             }
             Err(e) => {
                 warn!("メッセージの削除に失敗しました: {:?}", e);

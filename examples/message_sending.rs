@@ -16,11 +16,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ブロックキットを使用したメッセージ
     let blocks = vec![
+        SlackBlock::Section(SlackSectionBlock::new().with_text(SlackBlockText::MarkDown(
+            "*太字* _斜体_ ~取り消し線~".into(),
+        ))),
         SlackBlock::Section(
-            SlackBlockText::MarkDown("*太字* _斜体_ ~取り消し線~".into())
-        ),
-        SlackBlock::Section(
-            SlackBlockText::Plain("プレーンテキスト".into())
+            SlackSectionBlock::new().with_text(SlackBlockText::Plain("プレーンテキスト".into())),
         ),
     ];
     client.send_blocks("#general", blocks).await?;
