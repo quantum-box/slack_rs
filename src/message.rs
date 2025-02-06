@@ -159,6 +159,9 @@ mod tests {
         let token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKEN must be set");
         let token = SlackApiToken::new(SlackApiTokenValue(token));
         let client = MessageClient::new(token);
-        client.send_text("#general", "テストメッセージ").await.unwrap();
+        client
+            .send_text("#general", "テストメッセージ")
+            .await
+            .unwrap();
     }
 }
