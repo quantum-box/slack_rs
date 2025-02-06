@@ -68,6 +68,29 @@ Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-
 - :white_check_mark: レートリミット対応
 - :white_check_mark: メッセージ送信のユーティリティ関数の提供
 
+#### 使用例
+```rust
+use slack_rs::{MessageClient, SlackApiToken, SlackApiTokenValue};
+use slack_morphism::blocks::{SlackBlock, SlackBlockText, SlackSectionBlock};
+
+// クライアントの初期化
+let token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKEN must be set");
+let token = SlackApiToken::new(SlackApiTokenValue(token));
+let client = MessageClient::new(token);
+
+// テキストメッセージの送信
+let message = client.send_text("#general", "Hello, World!").await?;
+
+// ブロックキットを使用したメッセージ
+let blocks = vec![SlackBlock::Section(
+    SlackSectionBlock::new().with_text(SlackBlockText::MarkDown("*Bold* _italic_ ~strike~".into()))
+)];
+client.send_blocks("#general", blocks).await?;
+
+// スレッド返信
+client.reply_to_thread("#general", &message.ts, "スレッドへの返信").await?;
+```
+
 ### Socket Mode実装
 - :memo: Socket Modeクライアントの基本構造体の定義
 - :memo: Socket Modeを使用したメッセージ受信ロジックの実装
