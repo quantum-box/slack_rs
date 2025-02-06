@@ -1,4 +1,4 @@
-use slack_morphism::blocks::{SlackBlock, SlackBlockText};
+use slack_morphism::blocks::{SlackBlock, SlackBlockText, SlackSectionBlock};
 use slack_rs::{MessageClient, SlackApiToken, SlackApiTokenValue};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send_text("#general", "スレッドの親メッセージ")
         .await?;
     client
-        .reply_to_thread("#general", &message.ts, "スレッドへの返信")
+        .reply_to_thread("#general", &message.ts.to_string(), "スレッドへの返信")
         .await?;
 
     // メッセージの更新と削除
@@ -39,10 +39,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .update_message("#general", &message.ts, "更新されたメッセージ")
+        .update_message("#general", &message.ts.to_string(), "更新されたメッセージ")
         .await?;
     sleep(Duration::from_secs(2)).await;
-    client.delete_message("#general", &message.ts).await?;
+    client.delete_message("#general", &message.ts.to_string()).await?;
 
     // ファイルのアップロード
     let file_content = "テストファイルの内容".as_bytes().to_vec();
