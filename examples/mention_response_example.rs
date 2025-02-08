@@ -22,6 +22,8 @@ async fn main() -> anyhow::Result<()> {
     let signing_secret =
         std::env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRETが設定されていません");
 
+    let ngrok_domain = std::env::var("NGROK_DOMAIN").expect("NGROK_DOMAINが設定されていません");
+
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
@@ -39,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
         .await?
         // HTTPエンドポイントのトンネルを開始
         .http_endpoint()
+        .domain(ngrok_domain)
         .listen()
         .await?;
 

@@ -4,10 +4,12 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
-    Json, Router,
+    Router,
 };
+use bytes::Bytes;
 use slack_morphism::prelude::*;
 use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
+use std::time::{SystemTime, UNIX_EPOCH};
 // SlackApiSignatureVerifier is already available through prelude
 
 /// デフォルトのwebhookエンドポイントパス
@@ -30,10 +32,11 @@ pub struct AppState {
 pub async fn handle_push_event(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(event): Json<SlackPushEvent>,
+    body: Bytes,
 ) -> impl IntoResponse {
-    tracing::info!("Slackイベントを受信: type={:?}", event);
-    tracing::debug!("イベントの詳細: {:?}", event);
+    // 生のリクエストボディを取得
+    let body_str = String::from_utf8(body.to_vec()).unwrap_or_default();
+    tracing::debug!("受信したボディ: {}", body_str);
 
     // 署名の検証
     let signature = headers
@@ -46,13 +49,26 @@ pub async fn handle_push_event(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
+    // タイムスタンプの検証（5分以上古いリクエストは拒否）
+    let timestamp_num = timestamp.parse::<u64>().unwrap_or(0);
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    if current_time.abs_diff(timestamp_num) > 300 {
+        tracing::error!("リクエストが古すぎます: timestamp={}", timestamp);
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::from("Request timestamp is too old"))
+            .unwrap();
+    }
+
     tracing::debug!(
         "署名を検証: signature={}, timestamp={}",
         signature,
         timestamp
     );
-
-    let body_str = serde_json::to_string(&event).unwrap_or_default();
 
     // 署名の検証
     let verifier = SlackEventSignatureVerifier::new(&state.signing_secret);
@@ -65,6 +81,21 @@ pub async fn handle_push_event(
             .unwrap();
     }
 
+    // ボディをSlackPushEventとしてパース
+    let event: SlackPushEvent = match serde_json::from_str(&body_str) {
+        Ok(event) => event,
+        Err(e) => {
+            tracing::error!("JSONのパースに失敗: {}", e);
+            return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Body::from("Invalid JSON"))
+                .unwrap();
+        }
+    };
+
+    tracing::info!("Slackイベントを受信: type={:?}", event);
+    tracing::debug!("イベントの詳細: {:?}", event);
+
     match event {
         SlackPushEvent::UrlVerification(ref url_ver) => {
             tracing::info!("URL検証イベントを受信: challenge={}", url_ver.challenge);
@@ -76,9 +107,10 @@ pub async fn handle_push_event(
                     .body(Body::from("Challenge value is missing"))
                     .unwrap();
             }
-            // チャレンジ値をそのまま返す（Slackの要件）
+            // プレーンテキストでチャレンジ値を返す
             Response::builder()
                 .status(StatusCode::OK)
+                .header("Content-Type", "text/plain")
                 .body(Body::from(url_ver.challenge.clone()))
                 .unwrap()
         }
