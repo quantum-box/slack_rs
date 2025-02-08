@@ -58,6 +58,6 @@ mod tests {
                 text: "テスト2".to_string(),
             },
         ];
-        let _morphism_blocks = convert_blocks(blocks);
+        let _morphism_blocks: Vec<MorphismBlock> = blocks.into_iter().map(Into::into).collect();
     }
 }
