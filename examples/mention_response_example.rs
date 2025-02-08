@@ -29,7 +29,10 @@ async fn main() -> anyhow::Result<()> {
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app(SlackSigningSecret::new(signing_secret), bot_token));
+        .merge(create_app(
+            SlackSigningSecret::new(signing_secret),
+            bot_token,
+        ));
 
     // サーバーアドレスの設定
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

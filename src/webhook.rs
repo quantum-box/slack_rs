@@ -121,7 +121,8 @@ pub async fn handle_push_event(
             match callback.event {
                 SlackEventCallbackBody::AppMention(mention) => {
                     tracing::info!("メンションを受信: {:?}", mention);
-                    if let Err(e) = state.message_client
+                    if let Err(e) = state
+                        .message_client
                         .send_text(&mention.channel.to_string(), "はい、呼びましたか？")
                         .await
                     {
@@ -145,17 +146,42 @@ pub async fn handle_push_event(
     }
 }
 
+/// メッセージ送信機能なしのwebhookエンドポイントを作成します。
+pub fn create_webhook_app(signing_secret: SlackSigningSecret) -> Router {
+    create_webhook_app_with_path(signing_secret, DEFAULT_WEBHOOK_PATH)
+}
+
+/// メッセージ送信機能付きのwebhookエンドポイントを作成します。
 pub fn create_app(signing_secret: SlackSigningSecret, bot_token: SlackApiToken) -> Router {
     create_app_with_path(signing_secret, bot_token, DEFAULT_WEBHOOK_PATH)
 }
 
-/// 指定したパスでwebhookエンドポイントを作成します。
+/// メッセージ送信機能なしのwebhookエンドポイントを指定したパスで作成します。
+///
+/// # Arguments
+/// * `signing_secret` - Slack署名シークレット
+/// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
+pub fn create_webhook_app_with_path(signing_secret: SlackSigningSecret, path: &str) -> Router {
+    let state = AppState {
+        signing_secret,
+        message_client: MessageClient::new(SlackApiToken::new(SlackApiTokenValue("".into()))),
+    };
+    Router::new()
+        .route(path, post(handle_push_event))
+        .with_state(state)
+}
+
+/// メッセージ送信機能付きのwebhookエンドポイントを指定したパスで作成します。
 ///
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
 /// * `bot_token` - Slackボットトークン
 /// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
-pub fn create_app_with_path(signing_secret: SlackSigningSecret, bot_token: SlackApiToken, path: &str) -> Router {
+pub fn create_app_with_path(
+    signing_secret: SlackSigningSecret,
+    bot_token: SlackApiToken,
+    path: &str,
+) -> Router {
     let state = AppState {
         signing_secret,
         message_client: MessageClient::new(bot_token),
