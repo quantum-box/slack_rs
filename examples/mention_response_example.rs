@@ -1,10 +1,45 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use ngrok::prelude::*;
 use slack_morphism::prelude::*;
-use slack_rs::create_app_with_path;
+use slack_rs::{
+    create_app_with_handler, webhook::SlackPushEvent, MessageClient, SlackEventHandler,
+};
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
+
+// メンション応答ハンドラの定義
+#[derive(Clone)]
+struct MentionHandler;
+
+#[async_trait::async_trait]
+impl SlackEventHandler for MentionHandler {
+    async fn handle_event(
+        &self,
+        event: SlackPushEvent,
+        client: &MessageClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        match event {
+            SlackPushEvent::EventCallback(callback) => {
+                if let SlackEventCallbackBody::AppMention(mention) = callback.event {
+                    info!("メンションを受信: {:?}", mention);
+                    client
+                        .reply_to_thread(
+                            mention.channel.as_ref(),
+                            &mention.origin.ts.to_string(),
+                            "はい、呼びましたか？",
+                        )
+                        .await?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,10 +64,10 @@ async fn main() -> anyhow::Result<()> {
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app_with_path(
+        .merge(create_app_with_handler(
             SlackSigningSecret::new(signing_secret),
             bot_token,
-            "/push",
+            MentionHandler,
         ));
 
     // サーバーアドレスの設定
