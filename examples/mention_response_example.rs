@@ -19,7 +19,9 @@ impl SlackEventHandler for MentionHandler {
         client: &MessageClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match event {
-            Event::AppMention { channel, ts, text, .. } => {
+            Event::AppMention {
+                channel, ts, text, ..
+            } => {
                 info!(
                     "メンションを受信: channel={}, ts={}, text={}",
                     channel, ts, text
