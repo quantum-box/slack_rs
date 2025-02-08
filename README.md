@@ -48,6 +48,33 @@ export SLACK_APP_TOKEN="xapp-..."
 cargo run --example socket_mode_example --features socket_mode
 ```
 
+### メンション応答の例
+
+メンションされた時のみ応答するボットを実装する例です。以下の手順で実行します：
+
+1. 環境変数の設定:
+```bash
+export SLACK_SIGNING_SECRET="your-signing-secret"
+export SLACK_BOT_TOKEN="xoxb-your-bot-token"
+export NGROK_AUTHTOKEN="your-ngrok-token"  # ngrokを使用する場合
+```
+
+2. 必要な権限の設定:
+   - `app_mentions:read`: メンションの検知用
+   - `chat:write`: メッセージ送信用
+
+3. チャンネルの準備:
+   - ボットをチャンネルに招待: `/invite @[BOT名]`
+   - チャンネルIDの確認方法は「検証手順」セクションを参照
+
+4. サンプルコードの実行:
+```bash
+cargo run --example mention_response --features events
+```
+
+**注意**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
+権限の更新は再インストール後に反映されます。
+
 Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-morphism-rust](https://github.com/abdolence/slack-morphism-rust)をベースに、特にSocket Modeを使用したメッセージの受信に焦点を当てています。
 
 ## 実装タスク
