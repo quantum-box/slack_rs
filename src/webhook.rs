@@ -18,12 +18,22 @@ pub struct AppState {
     pub signing_secret: SlackSigningSecret,
 }
 
+/// Slackからのwebhookイベントを処理します。
+///
+/// # URL検証
+/// Slackからの検証リクエストに対して、チャレンジ値をプレーンテキストで返します。
+/// Content-Typeは`text/plain`である必要があります。
+///
+/// # エラー処理
+/// - チャレンジ値が空の場合は400 Bad Requestを返します
+/// - 署名が無効な場合は401 Unauthorizedを返します
 pub async fn handle_push_event(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(event): Json<SlackPushEvent>,
 ) -> impl IntoResponse {
-    tracing::info!("Received Slack event: {:?}", event);
+    tracing::info!("Slackイベントを受信: type={:?}", event);
+    tracing::debug!("イベントの詳細: {:?}", event);
 
     // 署名の検証
     let signature = headers
@@ -37,7 +47,7 @@ pub async fn handle_push_event(
         .unwrap_or("");
 
     tracing::debug!(
-        "Verifying signature: {}, timestamp: {}",
+        "署名を検証: signature={}, timestamp={}",
         signature,
         timestamp
     );
@@ -56,13 +66,18 @@ pub async fn handle_push_event(
     }
 
     match event {
-        SlackPushEvent::UrlVerification(url_ver) => {
-            tracing::info!("URL検証イベントを受信: {}", url_ver.challenge);
-            Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "text/plain")
-                .body(Body::from(url_ver.challenge))
-                .unwrap()
+        SlackPushEvent::UrlVerification(ref url_ver) => {
+            tracing::info!("URL検証イベントを受信: challenge={}", url_ver.challenge);
+            tracing::debug!("URL検証の詳細: event={:?}", event);
+            if url_ver.challenge.is_empty() {
+                tracing::error!("チャレンジ値が空です");
+                return Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from("Challenge value is missing"))
+                    .unwrap();
+            }
+            // チャレンジ値をそのまま返す（Slackの要件）
+            url_ver.challenge.into_response()
         }
         SlackPushEvent::EventCallback(callback) => {
             tracing::info!("イベントコールバックを受信: {:?}", callback);
