@@ -36,7 +36,11 @@ pub async fn handle_push_event(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    tracing::debug!("Verifying signature: {}, timestamp: {}", signature, timestamp);
+    tracing::debug!(
+        "Verifying signature: {}, timestamp: {}",
+        signature,
+        timestamp
+    );
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
 
