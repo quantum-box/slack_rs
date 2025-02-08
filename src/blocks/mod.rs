@@ -27,10 +27,7 @@ impl From<Block> for MorphismBlock {
     }
 }
 
-/// ブロックのリストをslack_morphismのブロックリストに変換
-pub(crate) fn convert_blocks(blocks: Vec<Block>) -> Vec<MorphismBlock> {
-    blocks.into_iter().map(Into::into).collect()
-}
+
 
 #[cfg(test)]
 mod tests {
