@@ -10,7 +10,6 @@ use bytes::Bytes;
 use slack_morphism::{
     prelude::*,
     signature_verifier::SlackEventSignatureVerifier,
-    SlackMessageContent,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -128,7 +127,7 @@ pub async fn handle_push_event(
                         .message_client
                         .reply_to_thread(
                             mention.channel.as_ref(),
-                            &mention.event_ts,
+                            &mention.origin.ts,
                             "はい、呼びましたか？",
                         )
                         .await
