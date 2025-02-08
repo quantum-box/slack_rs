@@ -196,7 +196,7 @@ export SLACK_TEST_APP_TOKEN=xapp-your-token-here
 #### Webhookモード
 
 ```rust
-use slack_rs::create_app;
+use slack_rs::{create_app, create_app_with_path};
 use axum::{routing::get, Router};
 use slack_morphism::prelude::*;
 
@@ -206,10 +206,15 @@ async fn main() {
     let signing_secret = std::env::var("SLACK_SIGNING_SECRET")
         .expect("SLACK_SIGNING_SECRETが設定されていません");
 
-    // ルーターの設定
+    // デフォルトパス（/push）を使用する場合
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app(SlackSigningSecret::new(signing_secret.into())));
+        .merge(create_app(SlackSigningSecret::new(signing_secret.clone())));
+
+    // カスタムパスを使用する場合（例：/slack/events）
+    let router = Router::new()
+        .route("/health", get(|| async { "OK" }))
+        .merge(create_app_with_path(SlackSigningSecret::new(signing_secret), "/slack/events"));
 
     // サーバーの起動
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
