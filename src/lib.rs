@@ -19,9 +19,10 @@ pub use webhook::{
 // 一時的なslack-morphism型のre-export
 // TODO: 将来的には内部実装に置き換える
 pub use slack_morphism::{
-    SlackApiChatPostMessageRequest, SlackApiToken, SlackApiTokenValue, SlackBlock, SlackBlockText,
-    SlackChannelId, SlackClient, SlackEventCallbackBody, SlackMessageContent, SlackPushEvent,
-    SlackSectionBlock, SlackTs,
+    api::SlackApiChatPostMessageRequest,
+    blocks::{SlackBlock, SlackBlockText, SlackSectionBlock},
+    events::{SlackEventCallbackBody, SlackPushEvent},
+    prelude::{SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent, SlackTs},
 };
 
 #[cfg(test)]
