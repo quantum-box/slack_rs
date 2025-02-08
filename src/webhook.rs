@@ -126,13 +126,10 @@ pub async fn handle_push_event(
                     tracing::info!("メンションを受信: {:?}", mention);
                     if let Err(e) = state
                         .message_client
-                        .send_text_with_opts(
+                        .reply_to_thread(
                             mention.channel.as_ref(),
+                            &mention.event_ts,
                             "はい、呼びましたか？",
-                            &SlackMessageContent {
-                                thread_ts: mention.ts.clone(),
-                                ..Default::default()
-                            },
                         )
                         .await
                     {
