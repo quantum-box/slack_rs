@@ -27,8 +27,6 @@ impl From<Block> for MorphismBlock {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

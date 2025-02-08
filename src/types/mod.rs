@@ -1,7 +1,8 @@
 //! Slack APIで使用する型定義
 
-
-use slack_morphism::{SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret};
+use slack_morphism::{
+    SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret,
+};
 
 /// Slackボットトークン
 #[derive(Clone, Debug)]

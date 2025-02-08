@@ -1,4 +1,20 @@
-use slack_morphism::events::{SlackEventCallbackBody, SlackPushEvent};
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
+use serde::Serialize;
+use slack_morphism::{
+    api::SlackApiChatPostMessageRequest,
+    events::{SlackEventCallbackBody, SlackPushEvent},
+    hyper_tokio::SlackClientHyperConnector,
+    prelude::*,
+    SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent, SlackTs,
+};
+use tracing::{error, info};
+
+use crate::oauth::OAuthConfig;
 
 /// Slackから受信するイベントの種類を表す列挙型
 #[derive(Debug, Clone)]
@@ -46,7 +62,11 @@ impl From<SlackPushEvent> for Event {
                     team_id: Some(callback.team_id.to_string()),
                 },
                 SlackEventCallbackBody::Message(message) => Self::Message {
-                    channel: message.origin.channel.expect("チャンネルIDが空です").to_string(),
+                    channel: message
+                        .origin
+                        .channel
+                        .expect("チャンネルIDが空です")
+                        .to_string(),
                     text: message.content.unwrap().text.unwrap_or_default(),
                     team_id: Some(callback.team_id.to_string()),
                 },
@@ -82,13 +102,22 @@ async fn handle_slack_event(
         Event::UrlVerification { challenge } => {
             Ok(Json(ChallengeResponse { challenge }).into_response())
         }
-        Event::Message { channel, text, team_id } => {
+        Event::Message {
+            channel,
+            text,
+            team_id,
+        } => {
             if let Err(e) = handle_message_event(channel, text, team_id, config).await {
                 error!("メッセージイベントの処理に失敗: {}", e);
             }
             Ok("ok".into_response())
         }
-        Event::AppMention { channel, text, team_id, .. } => {
+        Event::AppMention {
+            channel,
+            text,
+            team_id,
+            ..
+        } => {
             if let Err(e) = handle_app_mention_event(channel, text, team_id, config).await {
                 error!("アプリメンションイベントの処理に失敗: {}", e);
             }

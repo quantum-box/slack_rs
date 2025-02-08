@@ -38,11 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .update_message(
-            "C087D6X8NM9",
-            "1234567890.123456",
-            "更新されたメッセージ",
-        )
+        .update_message("C087D6X8NM9", "1234567890.123456", "更新されたメッセージ")
         .await?;
     sleep(Duration::from_secs(2)).await;
     client

@@ -22,7 +22,10 @@ pub use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
     blocks::{SlackBlock, SlackBlockText, SlackSectionBlock},
     events::{SlackEventCallbackBody, SlackPushEvent},
-    prelude::{SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent, SlackTs},
+    prelude::{
+        SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent,
+        SlackTs,
+    },
 };
 
 #[cfg(test)]

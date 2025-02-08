@@ -14,9 +14,7 @@ use axum::{
 };
 use bytes::Bytes;
 use slack_morphism::{
-    events::SlackPushEvent as MorphismPushEvent,
-
-    signature_verifier::SlackEventSignatureVerifier,
+    events::SlackPushEvent as MorphismPushEvent, signature_verifier::SlackEventSignatureVerifier,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -172,7 +170,11 @@ pub async fn handle_push_event<H: SlackEventHandler>(
         }
         Event::AppMention { .. } | Event::Message { .. } => {
             tracing::info!("イベントコールバックを受信");
-            if let Err(e) = state.handler.handle_event(event, &state.message_client).await {
+            if let Err(e) = state
+                .handler
+                .handle_event(event, &state.message_client)
+                .await
+            {
                 tracing::error!("イベントの処理に失敗: {}", e);
             }
             Response::builder()
@@ -195,11 +197,7 @@ pub async fn handle_push_event<H: SlackEventHandler>(
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
 pub fn create_app(signing_secret: SigningSecret) -> Router {
-    create_app_with_handler(
-        signing_secret,
-        Token::new(""),
-        NoopHandler,
-    )
+    create_app_with_handler(signing_secret, Token::new(""), NoopHandler)
 }
 
 /// webhookエンドポイントをカスタムハンドラで作成します。

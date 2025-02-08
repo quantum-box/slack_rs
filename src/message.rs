@@ -1,7 +1,9 @@
 use crate::{blocks::Block, types::Token};
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
-use slack_morphism::{blocks::SlackBlock as MorphismBlock, hyper_tokio::SlackClientHyperConnector, prelude::*};
+use slack_morphism::{
+    blocks::SlackBlock as MorphismBlock, hyper_tokio::SlackClientHyperConnector, prelude::*,
+};
 use std::{error::Error, sync::Arc};
 use tracing::{info, warn};
 
@@ -21,11 +23,7 @@ impl MessageClient {
         Self { client, token }
     }
 
-    pub async fn send_text(
-        &self,
-        channel: &str,
-        text: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    pub async fn send_text(&self, channel: &str, text: &str) -> Result<(), Box<dyn Error>> {
         let content = SlackMessageContent::new().with_text(text.into());
         self.send_message(channel, content).await
     }
@@ -113,11 +111,7 @@ impl MessageClient {
         }
     }
 
-    pub async fn delete_message(
-        &self,
-        channel: &str,
-        ts: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    pub async fn delete_message(&self, channel: &str, ts: &str) -> Result<(), Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let ts = SlackTs::new(ts.into());
         let req = SlackApiChatDeleteRequest::new(channel_id, ts.clone());

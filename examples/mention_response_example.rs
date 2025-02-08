@@ -21,11 +21,7 @@ impl SlackEventHandler for MentionHandler {
         if let Event::AppMention { channel, ts, .. } = event {
             info!("メンションを受信: channel={}, ts={}", channel, ts);
             client
-                .reply_to_thread(
-                    &channel,
-                    &ts,
-                    "はい、呼びましたか？",
-                )
+                .reply_to_thread(&channel, &ts, "はい、呼びましたか？")
                 .await?;
         }
         Ok(())
