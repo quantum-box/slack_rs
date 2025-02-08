@@ -1,4 +1,8 @@
-use crate::message::MessageClient;
+use crate::{
+    events::Event,
+    message::MessageClient,
+    types::{SigningSecret, Token},
+};
 use async_trait::async_trait;
 use axum::{
     body::Body,
@@ -9,7 +13,11 @@ use axum::{
     Router,
 };
 use bytes::Bytes;
-use slack_morphism::{prelude::*, signature_verifier::SlackEventSignatureVerifier};
+use slack_morphism::{
+    events::push::SlackPushEvent as MorphismPushEvent,
+    prelude::*,
+    signature_verifier::SlackEventSignatureVerifier,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // SlackApiSignatureVerifier is already available through prelude
@@ -22,7 +30,7 @@ pub struct NoopHandler;
 impl SlackEventHandler for NoopHandler {
     async fn handle_event(
         &self,
-        _event: SlackPushEvent,
+        _event: Event,
         _client: &MessageClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
@@ -46,7 +54,7 @@ pub trait SlackEventHandler: Send + Sync + Clone + 'static {
     /// * `Err(Box<dyn std::error::Error>)` - イベントの処理に失敗
     async fn handle_event(
         &self,
-        event: SlackPushEvent,
+        event: Event,
         client: &MessageClient,
     ) -> Result<(), Box<dyn std::error::Error>>;
 }
@@ -56,7 +64,7 @@ pub const DEFAULT_WEBHOOK_PATH: &str = "/push";
 
 #[derive(Clone)]
 pub struct AppState<H: SlackEventHandler> {
-    pub signing_secret: SlackSigningSecret,
+    pub signing_secret: SigningSecret,
     pub message_client: MessageClient,
     pub handler: H,
 }
@@ -119,7 +127,7 @@ pub async fn handle_push_event<H: SlackEventHandler>(
     );
 
     // 署名の検証
-    let verifier = SlackEventSignatureVerifier::new(&state.signing_secret);
+    let verifier = SlackEventSignatureVerifier::new(&state.signing_secret.into());
     let verification_result = verifier.verify(signature, &body_str, timestamp).is_ok();
 
     if !verification_result {
@@ -130,7 +138,7 @@ pub async fn handle_push_event<H: SlackEventHandler>(
     }
 
     // ボディをSlackPushEventとしてパース
-    let event: SlackPushEvent = match serde_json::from_str(&body_str) {
+    let morphism_event: MorphismPushEvent = match serde_json::from_str(&body_str) {
         Ok(event) => event,
         Err(e) => {
             tracing::error!("JSONのパースに失敗: {}", e);
@@ -141,14 +149,14 @@ pub async fn handle_push_event<H: SlackEventHandler>(
         }
     };
 
-    tracing::info!("Slackイベントを受信: type={:?}", event);
-    tracing::debug!("イベントの詳細: {:?}", event);
+    tracing::info!("Slackイベントを受信: type={:?}", morphism_event);
+    tracing::debug!("イベントの詳細: {:?}", morphism_event);
 
-    match event {
-        SlackPushEvent::UrlVerification(ref url_ver) => {
-            tracing::info!("URL検証イベントを受信: challenge={}", url_ver.challenge);
-            tracing::debug!("URL検証の詳細: event={:?}", event);
-            if url_ver.challenge.is_empty() {
+    let event: Event = morphism_event.into();
+    match &event {
+        Event::UrlVerification { challenge } => {
+            tracing::info!("URL検証イベントを受信: challenge={}", challenge);
+            if challenge.is_empty() {
                 tracing::error!("チャレンジ値が空です");
                 return Response::builder()
                     .status(StatusCode::BAD_REQUEST)
@@ -159,16 +167,12 @@ pub async fn handle_push_event<H: SlackEventHandler>(
             Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "text/plain")
-                .body(Body::from(url_ver.challenge.clone()))
+                .body(Body::from(challenge.clone()))
                 .unwrap()
         }
-        SlackPushEvent::EventCallback(_) => {
+        Event::AppMention { .. } | Event::Message { .. } => {
             tracing::info!("イベントコールバックを受信");
-            if let Err(e) = state
-                .handler
-                .handle_event(event, &state.message_client)
-                .await
-            {
+            if let Err(e) = state.handler.handle_event(event, &state.message_client).await {
                 tracing::error!("イベントの処理に失敗: {}", e);
             }
             Response::builder()
@@ -176,7 +180,7 @@ pub async fn handle_push_event<H: SlackEventHandler>(
                 .body(Body::empty())
                 .unwrap()
         }
-        _ => {
+        Event::Other => {
             tracing::debug!("未対応のイベントタイプを受信");
             Response::builder()
                 .status(StatusCode::OK)
@@ -190,10 +194,10 @@ pub async fn handle_push_event<H: SlackEventHandler>(
 ///
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
-pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
+pub fn create_app(signing_secret: SigningSecret) -> Router {
     create_app_with_handler(
         signing_secret,
-        SlackApiToken::new(SlackApiTokenValue("".into())),
+        Token::new(""),
         NoopHandler,
     )
 }
@@ -205,8 +209,8 @@ pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
 /// * `bot_token` - Slackボットトークン
 /// * `handler` - イベントを処理するハンドラ
 pub fn create_app_with_handler<H: SlackEventHandler>(
-    signing_secret: SlackSigningSecret,
-    bot_token: SlackApiToken,
+    signing_secret: SigningSecret,
+    bot_token: Token,
     handler: H,
 ) -> Router {
     create_app_with_path(signing_secret, bot_token, handler, DEFAULT_WEBHOOK_PATH)
@@ -220,8 +224,8 @@ pub fn create_app_with_handler<H: SlackEventHandler>(
 /// * `handler` - イベントを処理するハンドラ
 /// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
 pub fn create_app_with_path<H: SlackEventHandler>(
-    signing_secret: SlackSigningSecret,
-    bot_token: SlackApiToken,
+    signing_secret: SigningSecret,
+    bot_token: Token,
     handler: H,
     path: &str,
 ) -> Router {
