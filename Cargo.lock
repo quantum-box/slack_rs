@@ -2020,6 +2020,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "yoke",
 ]
 
 [[package]]
