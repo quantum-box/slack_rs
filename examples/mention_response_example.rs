@@ -1,10 +1,10 @@
 use axum::{routing::get, Router};
+use ngrok::prelude::*;
 use slack_morphism::prelude::*;
 use slack_rs::create_app;
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
-use ngrok::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
