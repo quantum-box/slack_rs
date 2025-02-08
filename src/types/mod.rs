@@ -1,5 +1,6 @@
 //! Slack APIで使用する型定義
 
+use rvstruct::ValueStruct;
 use slack_morphism::{
     SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret,
 };
