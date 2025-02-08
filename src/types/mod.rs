@@ -62,7 +62,8 @@ mod tests {
     fn test_token_conversion() {
         let token = Token::new("test-token");
         let morphism_token: SlackApiToken = token.into();
-        assert_eq!(morphism_token.into().0, "test-token");
+        let token_value: SlackApiTokenValue = morphism_token.into();
+        assert_eq!(token_value.0, "test-token");
     }
 
     #[test]
