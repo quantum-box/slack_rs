@@ -30,3 +30,8 @@ socket_mode = ["slack-morphism/axum"]
 events = []
 oauth = []
 message = []
+
+[[example]]
+name = "mention_response"
+path = "examples/mention_response_example.rs"
+required-features = ["events"]
