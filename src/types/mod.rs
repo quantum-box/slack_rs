@@ -1,9 +1,7 @@
 //! Slack APIで使用する型定義
 
 
-use rvstruct::ValueStruct;
 use slack_morphism::{SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret};
-use yoke::cartable_ptr::CartablePointerLike;
 
 /// Slackボットトークン
 #[derive(Clone, Debug)]
@@ -53,15 +51,13 @@ mod tests {
     fn test_token_conversion() {
         let token = Token::new("test-token");
         let morphism_token: SlackApiToken = token.into();
-        let token_raw = morphism_token.into_raw();
-        let token_value = unsafe { token_raw.as_ref() };
-        assert_eq!(token_value.0, "test-token");
+        assert_eq!(morphism_token.token_value().0, "test-token");
     }
 
     #[test]
     fn test_signing_secret_conversion() {
         let secret = SigningSecret::new("test-secret");
         let morphism_secret: MorphismSigningSecret = secret.into();
-        assert_eq!(morphism_secret.value(), "test-secret");
+        assert_eq!(morphism_secret.into_value(), "test-secret");
     }
 }
