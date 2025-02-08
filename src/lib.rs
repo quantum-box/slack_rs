@@ -8,6 +8,7 @@ pub mod webhook;
 
 // 公開APIのエクスポート
 pub use blocks::Block;
+#[cfg(feature = "events")]
 pub use events::Event;
 pub use message::MessageClient;
 pub use types::{SigningSecret, Token};

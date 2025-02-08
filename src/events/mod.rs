@@ -11,6 +11,7 @@ use serde::Serialize;
 use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
     events::{SlackEventCallbackBody, SlackPushEvent},
+    hyper_tokio::SlackClientHyperConnector,
     SlackApiToken, SlackApiTokenValue, SlackClient, SlackMessageContent,
 };
 #[cfg(feature = "events")]

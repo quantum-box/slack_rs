@@ -1,5 +1,6 @@
+#[cfg(feature = "events")]
+use crate::events::Event;
 use crate::{
-    events::Event,
     message::MessageClient,
     types::{SigningSecret, Token},
 };
@@ -24,6 +25,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Clone)]
 pub struct NoopHandler;
 
+#[cfg(feature = "events")]
 #[async_trait]
 impl SlackEventHandler for NoopHandler {
     async fn handle_event(
@@ -50,6 +52,7 @@ pub trait SlackEventHandler: Send + Sync + Clone + 'static {
     /// # 戻り値
     /// * `Ok(())` - イベントの処理に成功
     /// * `Err(Box<dyn std::error::Error>)` - イベントの処理に失敗
+    #[cfg(feature = "events")]
     async fn handle_event(
         &self,
         event: Event,
@@ -61,6 +64,7 @@ pub trait SlackEventHandler: Send + Sync + Clone + 'static {
 pub const DEFAULT_WEBHOOK_PATH: &str = "/push";
 
 #[derive(Clone)]
+#[cfg(feature = "events")]
 pub struct AppState<H: SlackEventHandler> {
     pub signing_secret: SigningSecret,
     pub message_client: MessageClient,
@@ -83,6 +87,7 @@ pub struct AppState<H: SlackEventHandler> {
 /// # エラー処理
 /// - チャレンジ値が空の場合は400 Bad Requestを返します
 /// - 署名が無効な場合は401 Unauthorizedを返します
+#[cfg(feature = "events")]
 pub async fn handle_push_event<H: SlackEventHandler>(
     State(state): State<AppState<H>>,
     headers: HeaderMap,
@@ -196,6 +201,7 @@ pub async fn handle_push_event<H: SlackEventHandler>(
 ///
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
+#[cfg(feature = "events")]
 pub fn create_app(signing_secret: SigningSecret) -> Router {
     create_app_with_handler(signing_secret, Token::new(""), NoopHandler)
 }
@@ -206,6 +212,7 @@ pub fn create_app(signing_secret: SigningSecret) -> Router {
 /// * `signing_secret` - Slack署名シークレット
 /// * `bot_token` - Slackボットトークン
 /// * `handler` - イベントを処理するハンドラ
+#[cfg(feature = "events")]
 pub fn create_app_with_handler<H: SlackEventHandler>(
     signing_secret: SigningSecret,
     bot_token: Token,
@@ -221,6 +228,7 @@ pub fn create_app_with_handler<H: SlackEventHandler>(
 /// * `bot_token` - Slackボットトークン
 /// * `handler` - イベントを処理するハンドラ
 /// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
+#[cfg(feature = "events")]
 pub fn create_app_with_path<H: SlackEventHandler>(
     signing_secret: SigningSecret,
     bot_token: Token,
