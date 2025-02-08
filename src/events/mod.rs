@@ -7,13 +7,10 @@ use axum::{
 use serde::Serialize;
 use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
-    blocks::SlackBlockPlainText,
-    events::{
-        SlackEventCallbackBody,
-        SlackPushEvent::{self as MorphismPushEvent, EventCallback},
-    },
+    events::{SlackEventCallbackBody, SlackPushEvent},
     hyper_tokio::SlackClientHyperConnector,
     prelude::*,
+    SlackApiTokenValue,
 };
 use tracing::{error, info};
 
@@ -51,10 +48,10 @@ pub enum Event {
     Other,
 }
 
-impl From<MorphismPushEvent> for Event {
-    fn from(event: MorphismPushEvent) -> Self {
+impl From<SlackPushEvent> for Event {
+    fn from(event: SlackPushEvent) -> Self {
         match event {
-            MorphismPushEvent::UrlVerification(ver) => Self::UrlVerification {
+            SlackPushEvent::UrlVerification(ver) => Self::UrlVerification {
                 challenge: ver.challenge,
             },
             SlackPushEvent::EventCallback(callback) => match callback.event {
@@ -62,12 +59,12 @@ impl From<MorphismPushEvent> for Event {
                     channel: mention.channel.to_string(),
                     ts: mention.origin.ts.to_string(),
                     text: mention.content.text.expect("メンションテキストが空です"),
-                    team_id: callback.team_id,
+                    team_id: Some(callback.team_id.to_string()),
                 },
                 SlackEventCallbackBody::Message(message) => Self::Message {
                     channel: message.origin.channel.expect("チャンネルIDが空です").to_string(),
                     text: message.content.unwrap().text.unwrap_or_default(),
-                    team_id: callback.team_id,
+                    team_id: Some(callback.team_id.to_string()),
                 },
                 _ => Self::Other,
             },
@@ -83,7 +80,6 @@ struct ChallengeResponse {
 }
 
 #[cfg(feature = "events")]
-#[axum::debug_handler]
 pub fn events_router(config: OAuthConfig) -> Router {
     Router::new()
         .route("/slack/events", post(handle_slack_event))
@@ -93,7 +89,7 @@ pub fn events_router(config: OAuthConfig) -> Router {
 #[cfg(feature = "events")]
 async fn handle_slack_event(
     State(config): State<OAuthConfig>,
-    Json(event): Json<MorphismPushEvent>,
+    Json(event): Json<SlackPushEvent>,
 ) -> Result<Response, String> {
     info!("Slackイベントを受信: {:?}", event);
 
@@ -124,7 +120,7 @@ async fn handle_slack_event(
 #[cfg(feature = "events")]
 async fn handle_message_event(
     channel: String,
-    text: String,
+    _text: String,
     team_id: Option<String>,
     config: OAuthConfig,
 ) -> Result<(), String> {
@@ -136,7 +132,7 @@ async fn handle_message_event(
         // トークンの取得
         let storage = config.token_storage.read().await;
         if let Some(token_response) = storage.get_token(&team_id) {
-            let token = SlackApiToken::new(token_response.access_token.clone());
+            let token = SlackApiToken::new(SlackApiTokenValue(token_response.access_token.clone()));
             let session = client.open_session(&token);
 
             // メッセージの送信
@@ -160,7 +156,7 @@ async fn handle_message_event(
 #[cfg(feature = "events")]
 async fn handle_app_mention_event(
     channel: String,
-    text: String,
+    _text: String,
     team_id: Option<String>,
     config: OAuthConfig,
 ) -> Result<(), String> {
@@ -172,7 +168,7 @@ async fn handle_app_mention_event(
         // トークンの取得
         let storage = config.token_storage.read().await;
         if let Some(token_response) = storage.get_token(&team_id) {
-            let token = SlackApiToken::new(token_response.access_token.clone());
+            let token = SlackApiToken::new(SlackApiTokenValue(token_response.access_token.clone()));
             let session = client.open_session(&token);
 
             // メンションへの応答
