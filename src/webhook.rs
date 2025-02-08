@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
     extract::State,
-    http::{header, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     Json, Router,
@@ -77,7 +77,10 @@ pub async fn handle_push_event(
                     .unwrap();
             }
             // チャレンジ値をそのまま返す（Slackの要件）
-            url_ver.challenge.into_response()
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(url_ver.challenge.clone()))
+                .unwrap()
         }
         SlackPushEvent::EventCallback(callback) => {
             tracing::info!("イベントコールバックを受信: {:?}", callback);
