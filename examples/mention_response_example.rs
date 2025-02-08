@@ -24,8 +24,6 @@ async fn main() -> anyhow::Result<()> {
     let bot_token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKENが設定されていません");
     let bot_token = SlackApiToken::new(SlackApiTokenValue(bot_token));
 
-    let ngrok_domain = std::env::var("NGROK_DOMAIN").expect("NGROK_DOMAINが設定されていません");
-
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
@@ -46,7 +44,6 @@ async fn main() -> anyhow::Result<()> {
         .await?
         // HTTPエンドポイントのトンネルを開始
         .http_endpoint()
-        .domain(ngrok_domain)
         .listen()
         .await?;
 
