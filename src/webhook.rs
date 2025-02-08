@@ -123,7 +123,7 @@ pub async fn handle_push_event(
                     tracing::info!("メンションを受信: {:?}", mention);
                     if let Err(e) = state
                         .message_client
-                        .send_text(&mention.channel.to_string(), "はい、呼びましたか？")
+                        .send_text(mention.channel.as_ref(), "はい、呼びましたか？")
                         .await
                     {
                         tracing::error!("メッセージの送信に失敗: {}", e);
