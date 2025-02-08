@@ -127,7 +127,7 @@ pub async fn handle_push_event(
                         .message_client
                         .reply_to_thread(
                             mention.channel.as_ref(),
-                            &mention.origin.ts,
+                            &mention.origin.ts.to_string(),
                             "はい、呼びましたか？",
                         )
                         .await
