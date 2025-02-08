@@ -9,8 +9,7 @@ use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
     events::{SlackEventCallbackBody, SlackPushEvent},
     hyper_tokio::SlackClientHyperConnector,
-    prelude::*,
-    SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent, SlackTs,
+    SlackApiToken, SlackApiTokenValue, SlackClient, SlackMessageContent,
 };
 use tracing::{error, info};
 
