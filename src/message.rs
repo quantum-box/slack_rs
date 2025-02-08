@@ -1,11 +1,7 @@
 use crate::{blocks::Block, types::Token};
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
-use slack_morphism::{
-    blocks::SlackBlock as MorphismBlock,
-    hyper_tokio::SlackClientHyperConnector,
-    prelude::*,
-};
+use slack_morphism::{blocks::SlackBlock as MorphismBlock, hyper_tokio::SlackClientHyperConnector, prelude::*};
 use std::{error::Error, sync::Arc};
 use tracing::{info, warn};
 
