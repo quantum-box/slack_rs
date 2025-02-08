@@ -20,6 +20,8 @@ pub async fn handle_push_event(
     headers: HeaderMap,
     Json(event): Json<SlackPushEvent>,
 ) -> impl IntoResponse {
+    tracing::info!("Received Slack event: {:?}", event);
+
     // 署名の検証
     let signature = headers
         .get(SlackEventSignatureVerifier::SLACK_SIGNED_HASH_HEADER)
@@ -30,6 +32,8 @@ pub async fn handle_push_event(
         .get(SlackEventSignatureVerifier::SLACK_SIGNED_TIMESTAMP)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
+
+    tracing::debug!("Verifying signature: {}, timestamp: {}", signature, timestamp);
 
     let body_str = serde_json::to_string(&event).unwrap_or_default();
 
@@ -46,7 +50,7 @@ pub async fn handle_push_event(
 
     match event {
         SlackPushEvent::UrlVerification(url_ver) => {
-            println!("URL検証イベントを受信: {}", url_ver.challenge);
+            tracing::info!("URL検証イベントを受信: {}", url_ver.challenge);
             let challenge_json = serde_json::json!({ "challenge": url_ver.challenge });
             Response::builder()
                 .status(StatusCode::OK)
@@ -55,22 +59,25 @@ pub async fn handle_push_event(
                 .unwrap()
         }
         SlackPushEvent::EventCallback(callback) => {
-            println!("イベントコールバックを受信: {:?}", callback);
+            tracing::info!("イベントコールバックを受信: {:?}", callback);
             Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::empty())
                 .unwrap()
         }
-        _ => Response::builder()
-            .status(StatusCode::OK)
-            .body(Body::empty())
-            .unwrap(),
+        _ => {
+            tracing::debug!("未対応のイベントタイプを受信");
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::empty())
+                .unwrap()
+        }
     }
 }
 
 pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
     let state = AppState { signing_secret };
     Router::new()
-        .route("/push", post(handle_push_event))
+        .route("/slack/events", post(handle_push_event))
         .with_state(state)
 }
