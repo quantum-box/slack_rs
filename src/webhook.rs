@@ -58,11 +58,10 @@ pub async fn handle_push_event(
     match event {
         SlackPushEvent::UrlVerification(url_ver) => {
             tracing::info!("URL検証イベントを受信: {}", url_ver.challenge);
-            let challenge_json = serde_json::json!({ "challenge": url_ver.challenge });
             Response::builder()
                 .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(serde_json::to_string(&challenge_json).unwrap()))
+                .header(header::CONTENT_TYPE, "text/plain")
+                .body(Body::from(url_ver.challenge))
                 .unwrap()
         }
         SlackPushEvent::EventCallback(callback) => {
