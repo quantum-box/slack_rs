@@ -20,7 +20,7 @@ impl From<Block> for MorphismBlock {
     fn from(block: Block) -> Self {
         match block {
             Block::Section { text } => SlackSectionBlock::new()
-                .with_text(SlackBlockText::plain(text))
+                .with_text(SlackBlockText::Plain(text.into()))
                 .into(),
             Block::Divider => SlackDividerBlock::new().into(),
         }

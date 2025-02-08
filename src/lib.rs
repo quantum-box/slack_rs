@@ -1,6 +1,7 @@
 pub mod blocks;
 pub mod events;
 pub mod message;
+pub mod oauth;
 pub mod socket_mode;
 pub mod types;
 pub mod webhook;

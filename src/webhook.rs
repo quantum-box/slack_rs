@@ -14,7 +14,7 @@ use axum::{
 };
 use bytes::Bytes;
 use slack_morphism::{
-    events::push::SlackPushEvent as MorphismPushEvent,
+    events::SlackPushEvent as MorphismPushEvent,
     prelude::*,
     signature_verifier::SlackEventSignatureVerifier,
 };

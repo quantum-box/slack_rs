@@ -2,8 +2,8 @@ use crate::{blocks::Block, types::Token};
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::connect::HttpConnector;
 use slack_morphism::{
+    blocks::SlackBlock as MorphismBlock,
     hyper_tokio::SlackClientHyperConnector,
-    models::blocks::SlackBlock as MorphismBlock,
     prelude::*,
 };
 use std::{error::Error, sync::Arc};
@@ -29,7 +29,7 @@ impl MessageClient {
         &self,
         channel: &str,
         text: &str,
-    ) -> Result<SlackApiChatPostMessageResponse, Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         let content = SlackMessageContent::new().with_text(text.into());
         self.send_message(channel, content).await
     }
@@ -52,7 +52,8 @@ impl MessageClient {
     ) -> Result<(), Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content);
-        let session = self.client.open_session(&self.token.clone().into());
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
         match session.chat_post_message(&req).await {
             Ok(_) => {
                 info!("メッセージを送信しました: {}", channel);
@@ -75,7 +76,8 @@ impl MessageClient {
         let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content)
             .with_thread_ts(SlackTs::new(thread_ts.into()));
-        let session = self.client.open_session(&self.token.clone().into());
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
         match session.chat_post_message(&req).await {
             Ok(_) => {
                 info!(
@@ -101,7 +103,8 @@ impl MessageClient {
         let ts = SlackTs::new(ts.into());
         let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatUpdateRequest::new(channel_id, content, ts.clone());
-        let session = self.client.open_session(&self.token.clone().into());
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
         match session.chat_update(&req).await {
             Ok(_) => {
                 info!("メッセージを更新しました: {} (ts: {})", channel, ts);
@@ -122,7 +125,8 @@ impl MessageClient {
         let channel_id = SlackChannelId::new(channel.into());
         let ts = SlackTs::new(ts.into());
         let req = SlackApiChatDeleteRequest::new(channel_id, ts.clone());
-        let session = self.client.open_session(&self.token.clone().into());
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
         match session.chat_delete(&req).await {
             Ok(_) => {
                 info!("メッセージを削除しました: {} (ts: {})", channel, ts);
@@ -147,7 +151,8 @@ impl MessageClient {
             .with_channels(channel_ids)
             .with_filename(filename.into())
             .with_content(String::from_utf8_lossy(&file).into_owned());
-        let session = self.client.open_session(&self.token.clone().into());
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
         #[allow(deprecated)]
         match session.files_upload(&req).await {
             Ok(_) => {

@@ -1,11 +1,18 @@
-use serde::{Deserialize, Serialize};
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
+use serde::Serialize;
 use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
+    blocks::SlackBlockPlainText,
     events::{
-        push::SlackPushEvent as MorphismPushEvent,
-        EventCallback,
+        SlackEventCallbackBody,
+        SlackPushEvent::{self as MorphismPushEvent, EventCallback},
     },
-    models::events::callback::SlackEventCallbackBody,
+    hyper_tokio::SlackClientHyperConnector,
     prelude::*,
 };
 use tracing::{error, info};
@@ -50,17 +57,17 @@ impl From<MorphismPushEvent> for Event {
             MorphismPushEvent::UrlVerification(ver) => Self::UrlVerification {
                 challenge: ver.challenge,
             },
-            MorphismPushEvent::EventCallback(EventCallback { event, team_id, .. }) => match event {
+            SlackPushEvent::EventCallback(callback) => match callback.event {
                 SlackEventCallbackBody::AppMention(mention) => Self::AppMention {
                     channel: mention.channel.to_string(),
                     ts: mention.origin.ts.to_string(),
-                    text: mention.text,
-                    team_id,
+                    text: mention.content.text.expect("メンションテキストが空です"),
+                    team_id: callback.team_id,
                 },
                 SlackEventCallbackBody::Message(message) => Self::Message {
-                    channel: message.channel.to_string(),
-                    text: message.text.unwrap_or_default(),
-                    team_id,
+                    channel: message.origin.channel.expect("チャンネルIDが空です").to_string(),
+                    text: message.content.unwrap().text.unwrap_or_default(),
+                    team_id: callback.team_id,
                 },
                 _ => Self::Other,
             },
@@ -76,6 +83,7 @@ struct ChallengeResponse {
 }
 
 #[cfg(feature = "events")]
+#[axum::debug_handler]
 pub fn events_router(config: OAuthConfig) -> Router {
     Router::new()
         .route("/slack/events", post(handle_slack_event))

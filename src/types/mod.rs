@@ -1,5 +1,6 @@
 //! Slack APIで使用する型定義
 
+use rvstruct::ValueStruct;
 use slack_morphism::{SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret};
 
 /// Slackボットトークン
@@ -60,7 +61,7 @@ mod tests {
     fn test_token_conversion() {
         let token = Token::new("test-token");
         let morphism_token: SlackApiToken = token.into();
-        assert_eq!(morphism_token.value().0, "test-token");
+        assert_eq!(morphism_token.into_raw().0, "test-token");
     }
 
     #[test]

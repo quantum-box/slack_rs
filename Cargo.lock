@@ -2011,6 +2011,7 @@ dependencies = [
  "hyper-rustls",
  "hyper-util",
  "ngrok",
+ "rvstruct",
  "serde",
  "serde_json",
  "slack-morphism",
