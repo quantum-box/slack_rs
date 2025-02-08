@@ -7,8 +7,11 @@ use axum::{
     Router,
 };
 use bytes::Bytes;
-use slack_morphism::prelude::*;
-use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
+use slack_morphism::{
+    prelude::*,
+    signature_verifier::SlackEventSignatureVerifier,
+    SlackMessageContent,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::message::MessageClient;
@@ -123,7 +126,14 @@ pub async fn handle_push_event(
                     tracing::info!("メンションを受信: {:?}", mention);
                     if let Err(e) = state
                         .message_client
-                        .send_text(mention.channel.as_ref(), "はい、呼びましたか？")
+                        .send_text_with_opts(
+                            mention.channel.as_ref(),
+                            "はい、呼びましたか？",
+                            &SlackMessageContent {
+                                thread_ts: mention.ts.clone(),
+                                ..Default::default()
+                            },
+                        )
                         .await
                     {
                         tracing::error!("メッセージの送信に失敗: {}", e);
