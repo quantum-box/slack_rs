@@ -1,7 +1,27 @@
-use slack_morphism::events::{SlackEventCallbackBody, SlackPushEvent};
+#[cfg(feature = "events")]
+use axum::{
+    extract::State,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
+#[cfg(feature = "events")]
+use serde::Serialize;
+#[cfg(feature = "events")]
+use slack_morphism::{
+    api::SlackApiChatPostMessageRequest,
+    events::{SlackEventCallbackBody, SlackPushEvent},
+    SlackApiToken, SlackApiTokenValue, SlackClient, SlackMessageContent,
+};
+#[cfg(feature = "events")]
+use tracing::{error, info};
+
+#[cfg(feature = "events")]
+use crate::oauth::OAuthConfig;
 
 /// Slackから受信するイベントの種類を表す列挙型
 #[derive(Debug, Clone)]
+#[cfg(feature = "events")]
 pub enum Event {
     /// URL検証イベント
     UrlVerification {
@@ -32,6 +52,7 @@ pub enum Event {
     Other,
 }
 
+#[cfg(feature = "events")]
 impl From<SlackPushEvent> for Event {
     fn from(event: SlackPushEvent) -> Self {
         match event {
