@@ -47,6 +47,7 @@ impl From<SigningSecret> for MorphismSigningSecret {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rvstruct::ValueStruct;
 
     #[test]
     fn test_token_conversion() {
