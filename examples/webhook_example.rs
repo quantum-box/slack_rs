@@ -1,6 +1,5 @@
 use axum::{routing::get, Router};
-use slack_morphism::prelude::*;
-use slack_rs::create_app;
+use slack_rs::{create_app, SigningSecret};
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -23,10 +22,12 @@ async fn main() -> anyhow::Result<()> {
     let signing_secret =
         std::env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRETが設定されていません");
 
+    let ngrok_domain = std::env::var("NGROK_DOMAIN").expect("NGROK_DOMAINが設定されていません");
+
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app(SlackSigningSecret::new(signing_secret)));
+        .merge(create_app(SigningSecret::new(signing_secret)));
 
     // サーバーアドレスの設定
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -40,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
         .await?
         // Start a tunnel with an HTTP edge
         .http_endpoint()
+        .domain(ngrok_domain)
         .listen()
         .await?;
 

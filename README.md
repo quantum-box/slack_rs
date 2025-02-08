@@ -48,6 +48,208 @@ export SLACK_APP_TOKEN="xapp-..."
 cargo run --example socket_mode_example --features socket_mode
 ```
 
+### カスタムイベントハンドラの実装
+
+イベントハンドラを実装することで、Slackイベントの処理をカスタマイズできます。
+ハンドラは`SlackEventHandler`トレイトを実装する必要があります。
+
+#### 基本的な使い方
+
+1. ハンドラの実装:
+```rust
+use slack_rs::{SlackEventHandler, MessageClient};
+use async_trait::async_trait;
+
+#[derive(Clone)]
+struct CustomHandler;
+
+#[async_trait]
+impl SlackEventHandler for CustomHandler {
+    async fn handle_event(
+        &self,
+        event: SlackPushEvent,
+        client: &MessageClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // イベントの処理をここに実装
+        Ok(())
+    }
+}
+```
+
+2. ハンドラの使用:
+```rust
+// デフォルトパス（/push）を使用する場合
+let app = create_app_with_handler(
+    SlackSigningSecret::new(signing_secret),
+    SlackApiToken::new(bot_token),
+    CustomHandler,
+);
+
+// カスタムパスを使用する場合
+let app = create_app_with_path(
+    SlackSigningSecret::new(signing_secret),
+    SlackApiToken::new(bot_token),
+    CustomHandler,
+    "/slack/events",
+);
+```
+
+#### ハンドラの種類
+
+1. NoopHandler（デフォルト）:
+```rust
+// イベントを無視するデフォルトのハンドラ
+let app = create_app(SlackSigningSecret::new(signing_secret));
+```
+
+2. カスタムハンドラ:
+```rust
+// イベントをカスタム処理するハンドラ
+let app = create_app_with_handler(
+    SlackSigningSecret::new(signing_secret),
+    SlackApiToken::new(bot_token),
+    CustomHandler,
+);
+```
+
+#### イベントの種類と処理パターン
+
+1. URL検証:
+```rust
+// URL検証は自動的に処理されます
+// カスタム処理が必要な場合のみ実装してください
+if let SlackPushEvent::UrlVerification(_) = event {
+    // URL検証イベントの処理
+}
+```
+
+2. メンション:
+```rust
+// メンションイベントの処理例
+if let SlackPushEvent::EventCallback(callback) = event {
+    if let SlackEventCallbackBody::AppMention(mention) = callback.event {
+        // メッセージの送信
+        client
+            .reply_to_thread(
+                mention.channel.as_ref(),
+                &mention.origin.ts.to_string(),
+                "応答メッセージ",
+            )
+            .await?;
+    }
+}
+```
+
+#### エラー処理
+
+1. エラーの返却:
+```rust
+// エラーは`Box<dyn std::error::Error>`として返却します
+if something_went_wrong {
+    return Err("エラーが発生しました".into());
+}
+```
+
+2. ログ出力:
+```rust
+// tracing クレートを使用してログを出力します
+tracing::info!("イベントを受信: {:?}", event);
+tracing::error!("エラーが発生: {}", error);
+```
+
+#### 環境変数
+
+必要な環境変数:
+- `SLACK_SIGNING_SECRET`: Slackアプリの署名シークレット
+- `SLACK_BOT_TOKEN`: Slackボットのトークン
+- `NGROK_AUTHTOKEN`: ngrokのトークン（開発時）
+- `NGROK_DOMAIN`: ngrokのドメイン（開発時）
+
+#### メンション応答の例
+
+以下は、メンションされた時に応答するボットの実装例です：
+
+```rust
+use slack_rs::{SlackEventHandler, MessageClient};
+use async_trait::async_trait;
+
+#[derive(Clone)]
+struct MentionHandler;
+
+#[async_trait]
+impl SlackEventHandler for MentionHandler {
+    async fn handle_event(
+        &self,
+        event: SlackPushEvent,
+        client: &MessageClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let SlackPushEvent::EventCallback(callback) = event {
+            if let SlackEventCallbackBody::AppMention(mention) = callback.event {
+                client
+                    .reply_to_thread(
+                        mention.channel.as_ref(),
+                        &mention.origin.ts.to_string(),
+                        "はい、呼びましたか？",
+                    )
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+}
+
+// ハンドラの使用
+let app = create_app_with_handler(
+    SlackSigningSecret::new(signing_secret),
+    SlackApiToken::new(bot_token),
+    MentionHandler,
+);
+```
+
+### メンション応答の例
+
+メンションされた時のみ応答するボットを実装する例です。以下の手順で実行します：
+
+#### 必要な環境変数
+- `SLACK_SIGNING_SECRET`: Slackアプリの署名シークレット
+- `SLACK_BOT_TOKEN`: Slackボットのトークン
+- `NGROK_AUTHTOKEN`: ngrokの認証トークン
+- `NGROK_DOMAIN`: ngrokの固定ドメイン（例：arriving-informally-manatee.ngrok-free.app）
+
+#### Slackアプリの設定
+1. Event Subscriptionsを有効化
+2. Request URLを設定: `https://{NGROK_DOMAIN}/push`
+   - URLが有効であることを確認（チャレンジレスポンスが成功すること）
+3. 以下のBot Event Scopesを追加:
+   - `app_mentions:read`: メンションの検知用
+   - `chat:write`: メッセージ送信用
+
+**注意**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
+権限の更新は再インストール後に反映されます。
+
+#### 使用方法
+1. `.env`ファイルに環境変数を設定:
+```bash
+SLACK_SIGNING_SECRET=your-signing-secret
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+NGROK_AUTHTOKEN=your-ngrok-token
+NGROK_DOMAIN=your-ngrok-domain
+```
+
+2. チャンネルの準備:
+   - ボットをチャンネルに招待: `/invite @[BOT名]`
+   - チャンネルIDの確認方法は「検証手順」セクションを参照
+
+3. サーバーを起動:
+```bash
+cargo run --example mention_response --features events
+```
+
+4. 動作確認:
+   - Slackでボットをメンション（@）する
+   - ボットが「はい、呼びましたか？」と応答することを確認
+   - 応答はスレッド内で行われます
+
 Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-morphism-rust](https://github.com/abdolence/slack-morphism-rust)をベースに、特にSocket Modeを使用したメッセージの受信に焦点を当てています。
 
 ## 実装タスク
@@ -169,7 +371,7 @@ export SLACK_TEST_APP_TOKEN=xapp-your-token-here
 #### Webhookモード
 
 ```rust
-use slack_rs::create_app;
+use slack_rs::{create_app, create_app_with_path};
 use axum::{routing::get, Router};
 use slack_morphism::prelude::*;
 
@@ -179,10 +381,15 @@ async fn main() {
     let signing_secret = std::env::var("SLACK_SIGNING_SECRET")
         .expect("SLACK_SIGNING_SECRETが設定されていません");
 
-    // ルーターの設定
+    // デフォルトパス（/push）を使用する場合
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app(SlackSigningSecret::new(signing_secret.into())));
+        .merge(create_app(SlackSigningSecret::new(signing_secret.clone())));
+
+    // カスタムパスを使用する場合（例：/slack/events）
+    let router = Router::new()
+        .route("/health", get(|| async { "OK" }))
+        .merge(create_app_with_path(SlackSigningSecret::new(signing_secret), "/slack/events"));
 
     // サーバーの起動
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));

@@ -2002,13 +2002,16 @@ name = "slack_rs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum 0.6.20",
+ "bytes",
  "dotenvy",
  "http 0.2.12",
  "hyper 1.5.2",
  "hyper-rustls",
  "hyper-util",
  "ngrok",
+ "rvstruct",
  "serde",
  "serde_json",
  "slack-morphism",
@@ -2017,6 +2020,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "yoke",
 ]
 
 [[package]]

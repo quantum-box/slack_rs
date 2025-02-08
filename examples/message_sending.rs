@@ -1,12 +1,11 @@
-use slack_morphism::blocks::{SlackBlock, SlackBlockText, SlackSectionBlock};
-use slack_rs::{MessageClient, SlackApiToken, SlackApiTokenValue};
+use slack_rs::{Block, MessageClient, Token};
 use std::time::Duration;
 use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKEN must be set");
-    let token = SlackApiToken::new(SlackApiTokenValue(token));
+    let token = Token::new(token);
     let client = MessageClient::new(token);
 
     // テキストメッセージの送信
@@ -16,38 +15,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ブロックキットを使用したメッセージ
     let blocks = vec![
-        SlackBlock::Section(SlackSectionBlock::new().with_text(SlackBlockText::MarkDown(
-            "*太字* _斜体_ ~取り消し線~".into(),
-        ))),
-        SlackBlock::Section(
-            SlackSectionBlock::new().with_text(SlackBlockText::Plain("プレーンテキスト".into())),
-        ),
+        Block::Section {
+            text: "*太字* _斜体_ ~取り消し線~".to_string(),
+        },
+        Block::Section {
+            text: "プレーンテキスト".to_string(),
+        },
     ];
     client.send_blocks("C087D6X8NM9", blocks).await?;
 
     // スレッド返信
-    let message = client
+    client
         .send_text("C087D6X8NM9", "スレッドの親メッセージ")
         .await?;
     client
-        .reply_to_thread("C087D6X8NM9", &message.ts.to_string(), "スレッドへの返信")
+        .reply_to_thread("C087D6X8NM9", "1234567890.123456", "スレッドへの返信")
         .await?;
 
     // メッセージの更新と削除
-    let message = client
+    client
         .send_text("C087D6X8NM9", "このメッセージは更新されます")
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .update_message(
-            "C087D6X8NM9",
-            &message.ts.to_string(),
-            "更新されたメッセージ",
-        )
+        .update_message("C087D6X8NM9", "1234567890.123456", "更新されたメッセージ")
         .await?;
     sleep(Duration::from_secs(2)).await;
     client
-        .delete_message("C087D6X8NM9", &message.ts.to_string())
+        .delete_message("C087D6X8NM9", "1234567890.123456")
         .await?;
 
     // ファイルのアップロード
