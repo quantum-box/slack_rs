@@ -10,6 +10,9 @@ use slack_morphism::prelude::*;
 use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
 // SlackApiSignatureVerifier is already available through prelude
 
+/// デフォルトのwebhookエンドポイントパス
+pub const DEFAULT_WEBHOOK_PATH: &str = "/push";
+
 #[derive(Clone)]
 pub struct AppState {
     pub signing_secret: SlackSigningSecret,
@@ -76,8 +79,17 @@ pub async fn handle_push_event(
 }
 
 pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
+    create_app_with_path(signing_secret, DEFAULT_WEBHOOK_PATH)
+}
+
+/// 指定したパスでwebhookエンドポイントを作成します。
+///
+/// # Arguments
+/// * `signing_secret` - Slack署名シークレット
+/// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
+pub fn create_app_with_path(signing_secret: SlackSigningSecret, path: &str) -> Router {
     let state = AppState { signing_secret };
     Router::new()
-        .route("/slack/events", post(handle_push_event))
+        .route(path, post(handle_push_event))
         .with_state(state)
 }
