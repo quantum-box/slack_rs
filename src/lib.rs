@@ -16,6 +16,14 @@ pub use webhook::{
     DEFAULT_WEBHOOK_PATH,
 };
 
+// 一時的なslack-morphism型のre-export
+// TODO: 将来的には内部実装に置き換える
+pub use slack_morphism::{
+    SlackApiChatPostMessageRequest, SlackApiToken, SlackApiTokenValue, SlackBlock, SlackBlockText,
+    SlackChannelId, SlackClient, SlackEventCallbackBody, SlackMessageContent, SlackPushEvent,
+    SlackSectionBlock, SlackTs,
+};
+
 #[cfg(test)]
 mod tests {
     #[test]
