@@ -1,7 +1,8 @@
 use axum::{routing::get, Router};
 use ngrok::prelude::*;
-use slack_morphism::{events::SlackPushEvent, prelude::*};
-use slack_rs::{create_app_with_path, MessageClient, SlackEventHandler};
+use slack_rs::{
+    create_app_with_path, Event, MessageClient, SigningSecret, SlackEventHandler, Token,
+};
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -14,23 +15,18 @@ struct MentionHandler;
 impl SlackEventHandler for MentionHandler {
     async fn handle_event(
         &self,
-        event: SlackPushEvent,
+        event: Event,
         client: &MessageClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        match event {
-            SlackPushEvent::EventCallback(callback) => {
-                if let SlackEventCallbackBody::AppMention(mention) = callback.event {
-                    info!("メンションを受信: {:?}", mention);
-                    client
-                        .reply_to_thread(
-                            mention.channel.as_ref(),
-                            &mention.origin.ts.to_string(),
-                            "はい、呼びましたか？",
-                        )
-                        .await?;
-                }
-            }
-            _ => {}
+        if let Event::AppMention { channel, ts, .. } = event {
+            info!("メンションを受信: channel={}, ts={}", channel, ts);
+            client
+                .reply_to_thread(
+                    &channel,
+                    &ts,
+                    "はい、呼びましたか？",
+                )
+                .await?;
         }
         Ok(())
     }
@@ -52,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
     let signing_secret =
         std::env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRETが設定されていません");
     let bot_token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKENが設定されていません");
-    let bot_token = SlackApiToken::new(SlackApiTokenValue(bot_token));
+    let bot_token = Token::new(bot_token);
 
     let ngrok_domain = std::env::var("NGROK_DOMAIN").expect("NGROK_DOMAINが設定されていません");
 
@@ -60,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
         .merge(create_app_with_path(
-            SlackSigningSecret::new(signing_secret),
+            SigningSecret::new(signing_secret),
             bot_token,
             MentionHandler,
             "/push",
