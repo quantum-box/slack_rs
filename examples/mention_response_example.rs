@@ -18,11 +18,17 @@ impl SlackEventHandler for MentionHandler {
         event: Event,
         client: &MessageClient,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if let Event::AppMention { channel, ts, .. } = event {
-            info!("メンションを受信: channel={}, ts={}", channel, ts);
-            client
-                .reply_to_thread(&channel, &ts, "はい、呼びましたか？")
-                .await?;
+        match event {
+            Event::AppMention { channel, ts, text, .. } => {
+                info!(
+                    "メンションを受信: channel={}, ts={}, text={}",
+                    channel, ts, text
+                );
+                client
+                    .reply_to_thread(&channel, &ts, "はい、呼びましたか？")
+                    .await?;
+            }
+            _ => info!("未対応のイベント: {:?}", event),
         }
         Ok(())
     }

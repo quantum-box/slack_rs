@@ -210,28 +210,45 @@ let app = create_app_with_handler(
 
 メンションされた時のみ応答するボットを実装する例です。以下の手順で実行します：
 
-1. 環境変数の設定:
-```bash
-export SLACK_SIGNING_SECRET="your-signing-secret"
-export SLACK_BOT_TOKEN="xoxb-your-bot-token"
-export NGROK_AUTHTOKEN="your-ngrok-token"  # ngrokを使用する場合
-```
+#### 必要な環境変数
+- `SLACK_SIGNING_SECRET`: Slackアプリの署名シークレット
+- `SLACK_BOT_TOKEN`: Slackボットのトークン
+- `NGROK_AUTHTOKEN`: ngrokの認証トークン
+- `NGROK_DOMAIN`: ngrokの固定ドメイン（例：arriving-informally-manatee.ngrok-free.app）
 
-2. 必要な権限の設定:
+#### Slackアプリの設定
+1. Event Subscriptionsを有効化
+2. Request URLを設定: `https://{NGROK_DOMAIN}/push`
+   - URLが有効であることを確認（チャレンジレスポンスが成功すること）
+3. 以下のBot Event Scopesを追加:
    - `app_mentions:read`: メンションの検知用
    - `chat:write`: メッセージ送信用
 
-3. チャンネルの準備:
+**注意**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
+権限の更新は再インストール後に反映されます。
+
+#### 使用方法
+1. `.env`ファイルに環境変数を設定:
+```bash
+SLACK_SIGNING_SECRET=your-signing-secret
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+NGROK_AUTHTOKEN=your-ngrok-token
+NGROK_DOMAIN=your-ngrok-domain
+```
+
+2. チャンネルの準備:
    - ボットをチャンネルに招待: `/invite @[BOT名]`
    - チャンネルIDの確認方法は「検証手順」セクションを参照
 
-4. サンプルコードの実行:
+3. サーバーを起動:
 ```bash
 cargo run --example mention_response --features events
 ```
 
-**注意**: 権限を更新した場合は、必ずワークスペースからBotを一度削除し、再インストールしてください。
-権限の更新は再インストール後に反映されます。
+4. 動作確認:
+   - Slackでボットをメンション（@）する
+   - ボットが「はい、呼びましたか？」と応答することを確認
+   - 応答はスレッド内で行われます
 
 Slack APIの使いやすいSDKを提供するRustライブラリです。[slack-morphism-rust](https://github.com/abdolence/slack-morphism-rust)をベースに、特にSocket Modeを使用したメッセージの受信に焦点を当てています。
 
