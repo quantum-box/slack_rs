@@ -10,6 +10,8 @@ use bytes::Bytes;
 use slack_morphism::prelude::*;
 use slack_morphism::signature_verifier::SlackEventSignatureVerifier;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::message::MessageClient;
 // SlackApiSignatureVerifier is already available through prelude
 
 /// デフォルトのwebhookエンドポイントパス
@@ -18,6 +20,7 @@ pub const DEFAULT_WEBHOOK_PATH: &str = "/push";
 #[derive(Clone)]
 pub struct AppState {
     pub signing_secret: SlackSigningSecret,
+    pub message_client: MessageClient,
 }
 
 /// Slackからのwebhookイベントを処理します。
@@ -131,17 +134,21 @@ pub async fn handle_push_event(
     }
 }
 
-pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
-    create_app_with_path(signing_secret, DEFAULT_WEBHOOK_PATH)
+pub fn create_app(signing_secret: SlackSigningSecret, bot_token: SlackApiToken) -> Router {
+    create_app_with_path(signing_secret, bot_token, DEFAULT_WEBHOOK_PATH)
 }
 
 /// 指定したパスでwebhookエンドポイントを作成します。
 ///
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
+/// * `bot_token` - Slackボットトークン
 /// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
-pub fn create_app_with_path(signing_secret: SlackSigningSecret, path: &str) -> Router {
-    let state = AppState { signing_secret };
+pub fn create_app_with_path(signing_secret: SlackSigningSecret, bot_token: SlackApiToken, path: &str) -> Router {
+    let state = AppState {
+        signing_secret,
+        message_client: MessageClient::new(bot_token),
+    };
     Router::new()
         .route(path, post(handle_push_event))
         .with_state(state)
