@@ -1,6 +1,6 @@
 use axum::{routing::get, Router};
 use slack_morphism::prelude::*;
-use slack_rs::create_webhook_app;
+use slack_rs::create_app;
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -25,7 +25,7 @@ async fn main() {
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_webhook_app(SlackSigningSecret::new(signing_secret)));
+        .merge(create_app(SlackSigningSecret::new(signing_secret)));
 
     // サーバーアドレスの設定
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

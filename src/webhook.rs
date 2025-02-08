@@ -9,15 +9,56 @@ use axum::{
 use bytes::Bytes;
 use slack_morphism::{prelude::*, signature_verifier::SlackEventSignatureVerifier};
 use std::time::{SystemTime, UNIX_EPOCH};
+use async_trait::async_trait;
+use crate::message::MessageClient;
 
 // SlackApiSignatureVerifier is already available through prelude
+
+/// 何もしないデフォルトのイベントハンドラ
+#[derive(Clone)]
+pub struct NoopHandler;
+
+#[async_trait]
+impl SlackEventHandler for NoopHandler {
+    async fn handle_event(
+        &self,
+        _event: SlackPushEvent,
+        _client: &MessageClient,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+}
+
+/// Slackイベントのハンドラトレイト
+///
+/// このトレイトを実装することで、Slackイベントの処理をカスタマイズできます。
+/// イベントハンドラは`Send + Sync + Clone + 'static`を実装する必要があります。
+#[async_trait]
+pub trait SlackEventHandler: Send + Sync + Clone + 'static {
+    /// イベントを処理します
+    ///
+    /// # 引数
+    /// * `event` - 処理対象のSlackイベント
+    /// * `client` - メッセージ送信用のクライアント
+    ///
+    /// # 戻り値
+    /// * `Ok(())` - イベントの処理に成功
+    /// * `Err(Box<dyn std::error::Error>)` - イベントの処理に失敗
+    async fn handle_event(
+        &self,
+        event: SlackPushEvent,
+        client: &MessageClient,
+    ) -> Result<(), Box<dyn std::error::Error>>;
+}
 
 /// デフォルトのwebhookエンドポイントパス
 pub const DEFAULT_WEBHOOK_PATH: &str = "/push";
 
 #[derive(Clone)]
-pub struct AppState {
+pub struct AppState<H: SlackEventHandler> {
     pub signing_secret: SlackSigningSecret,
+    pub message_client: MessageClient,
+    pub handler: H,
 }
 
 /// Slackからのwebhookイベントを処理します。
@@ -36,8 +77,8 @@ pub struct AppState {
 /// # エラー処理
 /// - チャレンジ値が空の場合は400 Bad Requestを返します
 /// - 署名が無効な場合は401 Unauthorizedを返します
-pub async fn handle_push_event(
-    State(state): State<AppState>,
+pub async fn handle_push_event<H: SlackEventHandler>(
+    State(state): State<AppState<H>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
@@ -121,8 +162,11 @@ pub async fn handle_push_event(
                 .body(Body::from(url_ver.challenge.clone()))
                 .unwrap()
         }
-        SlackPushEvent::EventCallback(callback) => {
-            tracing::info!("イベントコールバックを受信: {:?}", callback);
+        SlackPushEvent::EventCallback(_) => {
+            tracing::info!("イベントコールバックを受信");
+            if let Err(e) = state.handler.handle_event(event, &state.message_client).await {
+                tracing::error!("イベントの処理に失敗: {}", e);
+            }
             Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::empty())
@@ -138,24 +182,51 @@ pub async fn handle_push_event(
     }
 }
 
-/// メッセージ送信機能なしのwebhookエンドポイントを作成します。
-pub fn create_webhook_app(signing_secret: SlackSigningSecret) -> Router {
-    create_webhook_app_with_path(signing_secret, DEFAULT_WEBHOOK_PATH)
+/// webhookエンドポイントを作成します。
+///
+/// # Arguments
+/// * `signing_secret` - Slack署名シークレット
+pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
+    create_app_with_handler(
+        signing_secret,
+        SlackApiToken::new(SlackApiTokenValue("".into())),
+        NoopHandler,
+    )
 }
 
-/// webhookエンドポイントを作成します。
-pub fn create_app(signing_secret: SlackSigningSecret) -> Router {
-    create_app_with_path(signing_secret, DEFAULT_WEBHOOK_PATH)
+/// webhookエンドポイントをカスタムハンドラで作成します。
+///
+/// # Arguments
+/// * `signing_secret` - Slack署名シークレット
+/// * `bot_token` - Slackボットトークン
+/// * `handler` - イベントを処理するハンドラ
+pub fn create_app_with_handler<H: SlackEventHandler>(
+    signing_secret: SlackSigningSecret,
+    bot_token: SlackApiToken,
+    handler: H,
+) -> Router {
+    create_app_with_path(signing_secret, bot_token, handler, DEFAULT_WEBHOOK_PATH)
 }
 
 /// webhookエンドポイントを指定したパスで作成します。
 ///
 /// # Arguments
 /// * `signing_secret` - Slack署名シークレット
+/// * `bot_token` - Slackボットトークン
+/// * `handler` - イベントを処理するハンドラ
 /// * `path` - webhookエンドポイントのパス（例："/push" や "/slack/events"）
-pub fn create_app_with_path(signing_secret: SlackSigningSecret, path: &str) -> Router {
-    let state = AppState { signing_secret };
+pub fn create_app_with_path<H: SlackEventHandler>(
+    signing_secret: SlackSigningSecret,
+    bot_token: SlackApiToken,
+    handler: H,
+    path: &str,
+) -> Router {
+    let state = AppState {
+        signing_secret,
+        message_client: MessageClient::new(bot_token),
+        handler,
+    };
     Router::new()
-        .route(path, post(handle_push_event))
+        .route(path, post(|state, headers, body| handle_push_event::<H>(state, headers, body)))
         .with_state(state)
 }
