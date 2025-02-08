@@ -18,16 +18,18 @@ async fn main() -> anyhow::Result<()> {
 
     info!("メンション応答サーバーを起動します");
 
-    // 環境変数からSlack署名シークレットを取得
+    // 環境変数からSlack認証情報を取得
     let signing_secret =
         std::env::var("SLACK_SIGNING_SECRET").expect("SLACK_SIGNING_SECRETが設定されていません");
+    let bot_token = std::env::var("SLACK_BOT_TOKEN").expect("SLACK_BOT_TOKENが設定されていません");
+    let bot_token = SlackApiToken::new(SlackApiTokenValue(bot_token));
 
     let ngrok_domain = std::env::var("NGROK_DOMAIN").expect("NGROK_DOMAINが設定されていません");
 
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app(SlackSigningSecret::new(signing_secret)));
+        .merge(create_app(SlackSigningSecret::new(signing_secret), bot_token));
 
     // サーバーアドレスの設定
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
