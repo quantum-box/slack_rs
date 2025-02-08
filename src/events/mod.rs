@@ -1,20 +1,4 @@
-use axum::{
-    extract::State,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
-use serde::Serialize;
-use slack_morphism::{
-    api::SlackApiChatPostMessageRequest,
-    events::{SlackEventCallbackBody, SlackPushEvent},
-    hyper_tokio::SlackClientHyperConnector,
-    prelude::*,
-    SlackApiToken, SlackApiTokenValue, SlackChannelId, SlackClient, SlackMessageContent, SlackTs,
-};
-use tracing::{error, info};
-
-use crate::oauth::OAuthConfig;
+use slack_morphism::events::{SlackEventCallbackBody, SlackPushEvent};
 
 /// Slackから受信するイベントの種類を表す列挙型
 #[derive(Debug, Clone)]
