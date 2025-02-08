@@ -1,6 +1,7 @@
 //! Slack APIで使用する型定義
 
 
+use rvstruct::ValueStruct;
 use slack_morphism::{SlackApiToken, SlackApiTokenValue, SlackSigningSecret as MorphismSigningSecret};
 
 /// Slackボットトークン
@@ -14,11 +15,6 @@ impl Token {
     /// * `token` - Slackボットトークン文字列
     pub fn new(token: impl Into<String>) -> Self {
         Self(token.into())
-    }
-
-    /// トークン文字列を取得
-    pub(crate) fn as_str(&self) -> &str {
-        &self.0
     }
 }
 
@@ -40,11 +36,6 @@ impl SigningSecret {
     pub fn new(secret: impl Into<String>) -> Self {
         Self(secret.into())
     }
-
-    /// 署名シークレット文字列を取得
-    pub(crate) fn as_str(&self) -> &str {
-        &self.0
-    }
 }
 
 impl From<SigningSecret> for MorphismSigningSecret {
@@ -61,13 +52,14 @@ mod tests {
     fn test_token_conversion() {
         let token = Token::new("test-token");
         let morphism_token: SlackApiToken = token.into();
-        assert_eq!(morphism_token.value(), "test-token");
+        let token_value: SlackApiTokenValue = morphism_token.into();
+        assert_eq!(token_value.0, "test-token");
     }
 
     #[test]
     fn test_signing_secret_conversion() {
         let secret = SigningSecret::new("test-secret");
         let morphism_secret: MorphismSigningSecret = secret.into();
-        assert_eq!(morphism_secret.value(), "test-secret");
+        assert_eq!(morphism_secret.into_value(), "test-secret");
     }
 }
