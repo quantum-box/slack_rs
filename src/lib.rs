@@ -5,8 +5,8 @@ pub mod webhook;
 // Re-export commonly used items for public API
 pub use message::MessageClient;
 pub use webhook::{
-    create_app, create_app_with_path, handle_push_event, AppState, DEFAULT_WEBHOOK_PATH,
-    SlackEventHandler, NoopHandler,
+    create_app, create_app_with_path, handle_push_event, AppState, NoopHandler, SlackEventHandler,
+    DEFAULT_WEBHOOK_PATH,
 };
 
 // Re-export types from slack-morphism that are part of our public API

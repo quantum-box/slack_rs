@@ -1,3 +1,5 @@
+use crate::message::MessageClient;
+use async_trait::async_trait;
 use axum::{
     body::Body,
     extract::State,
@@ -9,8 +11,6 @@ use axum::{
 use bytes::Bytes;
 use slack_morphism::{prelude::*, signature_verifier::SlackEventSignatureVerifier};
 use std::time::{SystemTime, UNIX_EPOCH};
-use async_trait::async_trait;
-use crate::message::MessageClient;
 
 // SlackApiSignatureVerifier is already available through prelude
 
@@ -164,7 +164,11 @@ pub async fn handle_push_event<H: SlackEventHandler>(
         }
         SlackPushEvent::EventCallback(_) => {
             tracing::info!("イベントコールバックを受信");
-            if let Err(e) = state.handler.handle_event(event, &state.message_client).await {
+            if let Err(e) = state
+                .handler
+                .handle_event(event, &state.message_client)
+                .await
+            {
                 tracing::error!("イベントの処理に失敗: {}", e);
             }
             Response::builder()
@@ -227,6 +231,9 @@ pub fn create_app_with_path<H: SlackEventHandler>(
         handler,
     };
     Router::new()
-        .route(path, post(|state, headers, body| handle_push_event::<H>(state, headers, body)))
+        .route(
+            path,
+            post(|state, headers, body| handle_push_event::<H>(state, headers, body)),
+        )
         .with_state(state)
 }

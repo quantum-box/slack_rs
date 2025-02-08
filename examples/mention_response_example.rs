@@ -1,12 +1,7 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 use ngrok::prelude::*;
-use slack_morphism::prelude::*;
-use slack_rs::{
-    create_app_with_handler, webhook::SlackPushEvent, MessageClient, SlackEventHandler,
-};
+use slack_morphism::{events::SlackPushEvent, prelude::*};
+use slack_rs::{create_app_with_path, MessageClient, SlackEventHandler};
 use std::net::SocketAddr;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
@@ -64,10 +59,11 @@ async fn main() -> anyhow::Result<()> {
     // ルーターの設定
     let router = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .merge(create_app_with_handler(
+        .merge(create_app_with_path(
             SlackSigningSecret::new(signing_secret),
             bot_token,
             MentionHandler,
+            "/push",
         ));
 
     // サーバーアドレスの設定
