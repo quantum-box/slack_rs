@@ -118,7 +118,18 @@ pub async fn handle_push_event(
                 .unwrap()
         }
         SlackPushEvent::EventCallback(callback) => {
-            tracing::info!("イベントコールバックを受信: {:?}", callback);
+            match callback.event {
+                SlackEventCallbackBody::AppMention(mention) => {
+                    tracing::info!("メンションを受信: {:?}", mention);
+                    if let Err(e) = state.message_client
+                        .send_text(&mention.channel, "はい、呼びましたか？")
+                        .await
+                    {
+                        tracing::error!("メッセージの送信に失敗: {}", e);
+                    }
+                }
+                _ => tracing::debug!("未対応のイベントタイプを受信: {:?}", callback.event),
+            }
             Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::empty())
