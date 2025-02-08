@@ -1,34 +1,72 @@
-#[cfg(feature = "events")]
-use axum::{
-    extract::State,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
-};
 use serde::{Deserialize, Serialize};
-use slack_morphism::{api::SlackApiChatPostMessageRequest, prelude::*};
+use slack_morphism::{
+    api::SlackApiChatPostMessageRequest,
+    events::{
+        push::SlackPushEvent as MorphismPushEvent,
+        EventCallback,
+    },
+    models::events::callback::SlackEventCallbackBody,
+    prelude::*,
+};
 use tracing::{error, info};
 
 use crate::oauth::OAuthConfig;
 
-#[cfg(feature = "events")]
-#[derive(Debug, Deserialize)]
-struct SlackEventWrapper {
-    #[serde(rename = "type")]
-    event_type: String,
-    challenge: Option<String>,
-    event: Option<SlackEvent>,
-    team_id: Option<String>,
+/// Slackから受信するイベントの種類を表す列挙型
+#[derive(Debug, Clone)]
+pub enum Event {
+    /// URL検証イベント
+    UrlVerification {
+        /// チャレンジ値
+        challenge: String,
+    },
+    /// メンションイベント
+    AppMention {
+        /// チャンネルID
+        channel: String,
+        /// メッセージのタイムスタンプ
+        ts: String,
+        /// メッセージのテキスト
+        text: String,
+        /// チームID
+        team_id: Option<String>,
+    },
+    /// メッセージイベント
+    Message {
+        /// チャンネルID
+        channel: String,
+        /// メッセージのテキスト
+        text: String,
+        /// チームID
+        team_id: Option<String>,
+    },
+    /// その他のイベント
+    Other,
 }
 
-#[cfg(feature = "events")]
-#[derive(Debug, Deserialize)]
-struct SlackEvent {
-    #[serde(rename = "type")]
-    event_type: String,
-    text: Option<String>,
-    channel: Option<String>,
-    user: Option<String>,
+impl From<MorphismPushEvent> for Event {
+    fn from(event: MorphismPushEvent) -> Self {
+        match event {
+            MorphismPushEvent::UrlVerification(ver) => Self::UrlVerification {
+                challenge: ver.challenge,
+            },
+            MorphismPushEvent::EventCallback(EventCallback { event, team_id, .. }) => match event {
+                SlackEventCallbackBody::AppMention(mention) => Self::AppMention {
+                    channel: mention.channel.to_string(),
+                    ts: mention.origin.ts.to_string(),
+                    text: mention.text,
+                    team_id,
+                },
+                SlackEventCallbackBody::Message(message) => Self::Message {
+                    channel: message.channel.to_string(),
+                    text: message.text.unwrap_or_default(),
+                    team_id,
+                },
+                _ => Self::Other,
+            },
+            _ => Self::Other,
+        }
+    }
 }
 
 #[cfg(feature = "events")]
@@ -47,47 +85,42 @@ pub fn events_router(config: OAuthConfig) -> Router {
 #[cfg(feature = "events")]
 async fn handle_slack_event(
     State(config): State<OAuthConfig>,
-    Json(payload): Json<SlackEventWrapper>,
+    Json(event): Json<MorphismPushEvent>,
 ) -> Result<Response, String> {
-    info!("Slackイベントを受信: {:?}", payload);
+    info!("Slackイベントを受信: {:?}", event);
 
-    // URL Verification チャレンジの処理
-    if payload.event_type == "url_verification" {
-        if let Some(challenge) = payload.challenge {
-            return Ok(Json(ChallengeResponse { challenge }).into_response());
+    let event: Event = event.into();
+    match event {
+        Event::UrlVerification { challenge } => {
+            Ok(Json(ChallengeResponse { challenge }).into_response())
+        }
+        Event::Message { channel, text, team_id } => {
+            if let Err(e) = handle_message_event(channel, text, team_id, config).await {
+                error!("メッセージイベントの処理に失敗: {}", e);
+            }
+            Ok("ok".into_response())
+        }
+        Event::AppMention { channel, text, team_id, .. } => {
+            if let Err(e) = handle_app_mention_event(channel, text, team_id, config).await {
+                error!("アプリメンションイベントの処理に失敗: {}", e);
+            }
+            Ok("ok".into_response())
+        }
+        Event::Other => {
+            info!("未対応のイベントタイプ");
+            Ok("ok".into_response())
         }
     }
-
-    // イベントの処理
-    if let Some(event) = payload.event {
-        match event.event_type.as_str() {
-            "message" => {
-                if let Err(e) = handle_message_event(event, payload.team_id, config).await {
-                    error!("メッセージイベントの処理に失敗: {}", e);
-                }
-            }
-            "app_mention" => {
-                if let Err(e) = handle_app_mention_event(event, payload.team_id, config).await {
-                    error!("アプリメンションイベントの処理に失敗: {}", e);
-                }
-            }
-            _ => {
-                info!("未対応のイベントタイプ: {}", event.event_type);
-            }
-        }
-    }
-
-    Ok(()).map_err(|e: Box<dyn std::error::Error>| format!("イベント処理エラー: {}", e))?;
-    Ok("ok".into_response())
 }
 
 #[cfg(feature = "events")]
 async fn handle_message_event(
-    event: SlackEvent,
+    channel: String,
+    text: String,
     team_id: Option<String>,
     config: OAuthConfig,
 ) -> Result<(), String> {
-    if let (Some(channel), Some(team_id)) = (event.channel, team_id) {
+    if let Some(team_id) = team_id {
         let connector = SlackClientHyperConnector::new()
             .map_err(|e| format!("Failed to create connector: {}", e))?;
         let client = SlackClient::new(connector);
@@ -111,22 +144,19 @@ async fn handle_message_event(
                     error!("メッセージの送信に失敗: {}", e);
                     format!("メッセージの送信に失敗: {}", e)
                 })?;
-            Ok(())
-        } else {
-            Ok(())
         }
-    } else {
-        Ok(())
     }
+    Ok(())
 }
 
 #[cfg(feature = "events")]
 async fn handle_app_mention_event(
-    event: SlackEvent,
+    channel: String,
+    text: String,
     team_id: Option<String>,
     config: OAuthConfig,
 ) -> Result<(), String> {
-    if let (Some(channel), Some(team_id)) = (event.channel, team_id) {
+    if let Some(team_id) = team_id {
         let connector = SlackClientHyperConnector::new()
             .map_err(|e| format!("Failed to create connector: {}", e))?;
         let client = SlackClient::new(connector);
@@ -150,11 +180,7 @@ async fn handle_app_mention_event(
                     error!("メッセージの送信に失敗: {}", e);
                     format!("メッセージの送信に失敗: {}", e)
                 })?;
-            Ok(())
-        } else {
-            Ok(())
         }
-    } else {
-        Ok(())
     }
+    Ok(())
 }
