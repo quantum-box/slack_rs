@@ -25,8 +25,8 @@ rvstruct = "0.3.2"
 yoke = "0.7.5"
 axum-server = "0.7.1"
 futures-util = "0.3"
-ngrok = { version = "0.13", features = ["axum"] }
-rustls = { version = "0.23.22", default-features = false, features = [
+# ngrok = { version = "0.13", features = ["axum"] }
+rustls = { version = "0.23", default-features = false, features = [
     "ring",
     "logging",
     "std",
