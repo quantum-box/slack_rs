@@ -1,9 +1,13 @@
 use axum::{routing::get, Router};
+use hyper::service::service_fn;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::server::conn::auto::Builder;
 use ngrok::prelude::*;
 use slack_rs::{
     create_app_with_path, Event, MessageClient, SigningSecret, SlackEventHandler, Token,
 };
 use std::net::SocketAddr;
+use tower::Service;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -85,10 +89,26 @@ async fn main() -> anyhow::Result<()> {
     info!("Tunnel URL: {}", tun.url());
 
     // サーバーの起動
-    axum::Server::builder(tun)
-        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .unwrap();
+    loop {
+        let (socket, _) = tun.accept().await?;
+        let io = TokioIo::new(socket);
+        let router = router.clone();
+        
+        tokio::task::spawn(async move {
+            let service = service_fn(move |req| {
+                let mut router = router.clone();
+                async move { Service::call(&mut router, req).await }
+            });
+            
+            if let Err(err) = Builder::new(TokioExecutor::new())
+                .serve_connection(io, service)
+                .await
+            {
+                eprintln!("Error serving connection: {}", err);
+            }
+        });
+    }
 
+    #[allow(unreachable_code)]
     Ok(())
 }
