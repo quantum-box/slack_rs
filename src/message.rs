@@ -23,20 +23,47 @@ impl MessageClient {
         Self { client, token }
     }
 
-    pub async fn send_text(&self, channel: &str, text: &str) -> Result<(), Box<dyn Error>> {
+    pub async fn send_text(&self, channel: &str, text: &str) -> Result<String, Box<dyn Error>> {
         let content = SlackMessageContent::new().with_text(text.into());
-        self.send_message(channel, content).await
+        let channel_id = SlackChannelId::new(channel.into());
+        let req = SlackApiChatPostMessageRequest::new(channel_id, content);
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
+        match session.chat_post_message(&req).await {
+            Ok(response) => {
+                let ts = response.ts.to_string();
+                info!("メッセージを送信しました: {} (ts: {})", channel, ts);
+                Ok(ts)
+            }
+            Err(e) => {
+                warn!("メッセージの送信に失敗しました: {:?}", e);
+                Err(Box::new(e))
+            }
+        }
     }
 
     pub async fn send_blocks(
         &self,
         channel: &str,
         blocks: Vec<Block>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let morphism_blocks: Vec<MorphismBlock> = blocks.into_iter().map(Into::into).collect();
         let content = SlackMessageContent::new().with_blocks(morphism_blocks);
-        self.send_message(channel, content).await?;
-        Ok(())
+        let channel_id = SlackChannelId::new(channel.into());
+        let req = SlackApiChatPostMessageRequest::new(channel_id, content);
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
+        match session.chat_post_message(&req).await {
+            Ok(response) => {
+                let ts = response.ts.to_string();
+                info!("メッセージを送信しました: {} (ts: {})", channel, ts);
+                Ok(ts)
+            }
+            Err(e) => {
+                warn!("メッセージの送信に失敗しました: {:?}", e);
+                Err(Box::new(e))
+            }
+        }
     }
 
     pub async fn reply_to_thread_with_blocks(
@@ -44,7 +71,7 @@ impl MessageClient {
         channel: &str,
         thread_ts: &str,
         blocks: Vec<Block>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let morphism_blocks: Vec<MorphismBlock> = blocks.into_iter().map(Into::into).collect();
         let content = SlackMessageContent::new().with_blocks(morphism_blocks);
@@ -53,12 +80,13 @@ impl MessageClient {
         let token = self.token.clone().into();
         let session = self.client.open_session(&token);
         match session.chat_post_message(&req).await {
-            Ok(_) => {
+            Ok(response) => {
+                let ts = response.ts.to_string();
                 info!(
-                    "スレッドにブロックメッセージを返信しました: {} (thread_ts: {})",
-                    channel, thread_ts
+                    "スレッドにブロックメッセージを返信しました: {} (thread_ts: {}, ts: {})",
+                    channel, thread_ts, ts
                 );
-                Ok(())
+                Ok(ts)
             }
             Err(e) => {
                 warn!(
@@ -74,15 +102,16 @@ impl MessageClient {
         &self,
         channel: &str,
         content: SlackMessageContent,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content);
         let token = self.token.clone().into();
         let session = self.client.open_session(&token);
         match session.chat_post_message(&req).await {
-            Ok(_) => {
-                info!("メッセージを送信しました: {}", channel);
-                Ok(())
+            Ok(response) => {
+                let ts = response.ts.to_string();
+                info!("メッセージを送信しました: {} (ts: {})", channel, ts);
+                Ok(ts)
             }
             Err(e) => {
                 warn!("メッセージの送信に失敗しました: {:?}", e);
@@ -96,7 +125,7 @@ impl MessageClient {
         channel: &str,
         thread_ts: &str,
         text: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error>> {
         let channel_id = SlackChannelId::new(channel.into());
         let content = SlackMessageContent::new().with_text(text.into());
         let req = SlackApiChatPostMessageRequest::new(channel_id, content)
@@ -104,12 +133,13 @@ impl MessageClient {
         let token = self.token.clone().into();
         let session = self.client.open_session(&token);
         match session.chat_post_message(&req).await {
-            Ok(_) => {
+            Ok(response) => {
+                let ts = response.ts.to_string();
                 info!(
-                    "スレッドに返信しました: {} (thread_ts: {})",
-                    channel, thread_ts
+                    "スレッドに返信しました: {} (thread_ts: {}, ts: {})",
+                    channel, thread_ts, ts
                 );
-                Ok(())
+                Ok(ts)
             }
             Err(e) => {
                 warn!("スレッドへの返信に失敗しました: {:?}", e);
