@@ -19,13 +19,13 @@ async fn main() {
         let (socket, _) = listener.accept().await.unwrap();
         let io = TokioIo::new(socket);
         let app = app.clone();
-        
+
         tokio::task::spawn(async move {
             let service = service_fn(move |req| {
                 let mut app = app.clone();
                 async move { Service::call(&mut app, req).await }
             });
-            
+
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection(io, service)
                 .await

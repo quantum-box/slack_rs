@@ -56,13 +56,13 @@ async fn main() -> anyhow::Result<()> {
         let (socket, _) = tun.accept().await?;
         let io = TokioIo::new(socket);
         let router = router.clone();
-        
+
         tokio::task::spawn(async move {
             let service = service_fn(move |req| {
                 let mut router = router.clone();
                 async move { Service::call(&mut router, req).await }
             });
-            
+
             if let Err(err) = Builder::new(TokioExecutor::new())
                 .serve_connection(io, service)
                 .await
