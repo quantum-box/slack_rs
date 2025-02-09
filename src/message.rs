@@ -39,6 +39,37 @@ impl MessageClient {
         Ok(())
     }
 
+    pub async fn reply_to_thread_with_blocks(
+        &self,
+        channel: &str,
+        thread_ts: &str,
+        blocks: Vec<Block>,
+    ) -> Result<(), Box<dyn Error>> {
+        let channel_id = SlackChannelId::new(channel.into());
+        let morphism_blocks: Vec<MorphismBlock> = blocks.into_iter().map(Into::into).collect();
+        let content = SlackMessageContent::new().with_blocks(morphism_blocks);
+        let req = SlackApiChatPostMessageRequest::new(channel_id, content)
+            .with_thread_ts(SlackTs::new(thread_ts.into()));
+        let token = self.token.clone().into();
+        let session = self.client.open_session(&token);
+        match session.chat_post_message(&req).await {
+            Ok(_) => {
+                info!(
+                    "スレッドにブロックメッセージを返信しました: {} (thread_ts: {})",
+                    channel, thread_ts
+                );
+                Ok(())
+            }
+            Err(e) => {
+                warn!(
+                    "スレッドへのブロックメッセージの返信に失敗しました: {:?}",
+                    e
+                );
+                Err(Box::new(e))
+            }
+        }
+    }
+
     async fn send_message(
         &self,
         channel: &str,

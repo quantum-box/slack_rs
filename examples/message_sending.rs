@@ -24,6 +24,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     client.send_blocks("C087D6X8NM9", blocks).await?;
 
+    // ブロックキットを使用したスレッド返信
+    let reply_blocks = vec![
+        Block::Section {
+            text: "*スレッド返信* with _BlockKit_".to_string(),
+        },
+        Block::Section {
+            text: "複数のブロックを使用した返信が可能です".to_string(),
+        },
+    ];
+    client
+        .reply_to_thread_with_blocks("C087D6X8NM9", "1234567890.123456", reply_blocks)
+        .await?;
+
     // スレッド返信
     client
         .send_text("C087D6X8NM9", "スレッドの親メッセージ")
