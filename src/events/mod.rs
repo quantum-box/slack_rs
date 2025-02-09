@@ -7,6 +7,7 @@ use axum::{
 };
 #[cfg(feature = "events")]
 use serde::Serialize;
+use slack_morphism::SlackMessageSender;
 #[cfg(feature = "events")]
 use slack_morphism::{
     api::SlackApiChatPostMessageRequest,
@@ -41,16 +42,37 @@ pub enum Event {
         team_id: Option<String>,
     },
     /// メッセージイベント
-    Message {
-        /// チャンネルID
-        channel: String,
-        /// メッセージのテキスト
-        text: String,
-        /// チームID
-        team_id: Option<String>,
-    },
+    Message(Message),
     /// その他のイベント
     Other,
+}
+
+#[derive(Debug, Clone)]
+#[cfg(feature = "events")]
+pub struct Message {
+    /// チャンネルID
+    pub channel: String,
+    /// メッセージのタイムスタンプ
+    pub ts: String,
+    /// メッセージのテキスト
+    pub text: String,
+    /// チームID
+    pub team_id: Option<String>,
+    /// メッセージのユーザーID
+    pub sender: Sender,
+}
+
+#[derive(Debug, Clone)]
+#[cfg(feature = "events")]
+pub enum Sender {
+    User {
+        id: String,
+        username: Option<String>,
+    },
+    Bot {
+        id: String,
+        username: Option<String>,
+    },
 }
 
 #[cfg(feature = "events")]
@@ -67,18 +89,37 @@ impl From<SlackPushEvent> for Event {
                     text: mention.content.text.expect("メンションテキストが空です"),
                     team_id: Some(callback.team_id.to_string()),
                 },
-                SlackEventCallbackBody::Message(message) => Self::Message {
+                SlackEventCallbackBody::Message(message) => Self::Message(Message {
                     channel: message
                         .origin
                         .channel
                         .expect("チャンネルIDが空です")
                         .to_string(),
+                    ts: message.origin.ts.to_string(),
                     text: message.content.unwrap().text.unwrap_or_default(),
                     team_id: Some(callback.team_id.to_string()),
-                },
+                    sender: Sender::from(message.sender),
+                }),
                 _ => Self::Other,
             },
             _ => Self::Other,
+        }
+    }
+}
+
+#[cfg(feature = "events")]
+impl From<SlackMessageSender> for Sender {
+    fn from(value: SlackMessageSender) -> Self {
+        if let Some(user) = value.user {
+            Sender::User {
+                id: user.to_string(),
+                username: value.username,
+            }
+        } else {
+            Sender::Bot {
+                id: value.bot_id.map(|id| id.to_string()).unwrap_or_default(),
+                username: value.username,
+            }
         }
     }
 }
@@ -108,12 +149,8 @@ async fn handle_slack_event(
         Event::UrlVerification { challenge } => {
             Ok(Json(ChallengeResponse { challenge }).into_response())
         }
-        Event::Message {
-            channel,
-            text,
-            team_id,
-        } => {
-            if let Err(e) = handle_message_event(channel, text, team_id, config).await {
+        Event::Message(message) => {
+            if let Err(e) = handle_message_event(message, config).await {
                 error!("メッセージイベントの処理に失敗: {}", e);
             }
             Ok("ok".into_response())
@@ -137,13 +174,8 @@ async fn handle_slack_event(
 }
 
 #[cfg(feature = "events")]
-async fn handle_message_event(
-    channel: String,
-    _text: String,
-    team_id: Option<String>,
-    config: OAuthConfig,
-) -> Result<(), String> {
-    if let Some(team_id) = team_id {
+async fn handle_message_event(message: Message, config: OAuthConfig) -> Result<(), String> {
+    if let Some(team_id) = message.team_id {
         let connector = SlackClientHyperConnector::new()
             .map_err(|e| format!("Failed to create connector: {}", e))?;
         let client = SlackClient::new(connector);
@@ -156,7 +188,7 @@ async fn handle_message_event(
 
             // メッセージの送信
             let post_request = SlackApiChatPostMessageRequest::new(
-                channel.into(),
+                message.channel.into(),
                 SlackMessageContent::new().with_text("メッセージを受信しました！".to_string()),
             );
 
