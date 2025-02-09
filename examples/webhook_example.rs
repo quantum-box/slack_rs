@@ -47,6 +47,8 @@ async fn main() -> anyhow::Result<()> {
     info!("Tunnel URL: {}", tun.url());
 
     // サーバーの起動
-    tun.serve(router).await?;
+    axum::Server::builder(tun)
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
+        .await?;
     Ok(())
 }
