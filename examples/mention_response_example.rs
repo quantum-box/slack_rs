@@ -37,6 +37,7 @@ impl SlackEventHandler for MentionHandler {
 }
 
 #[tokio::main]
+#[ignore = "外部サービス（ngrok）を使用するため、CIでは実行しない"]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
