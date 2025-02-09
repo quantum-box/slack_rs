@@ -71,23 +71,21 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     info!("サーバーを開始します: {}", addr);
 
-    let tun = ngrok::Session::builder()
-        // NGROKトークンを環境変数から読み込み
+    let mut tun = ngrok::Session::builder()
         .authtoken_from_env()
-        // NGROKセッションの接続
         .connect()
         .await?
-        // HTTPエンドポイントのトンネルを開始
         .http_endpoint()
         .domain(ngrok_domain)
         .listen()
         .await?;
 
     info!("Tunnel URL: {}", tun.url());
+    tun.forward_http(addr).await?;
 
     // サーバーの起動
-    axum::Server::builder(tun)
-        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
+    axum_server::bind(addr)
+        .serve(router.into_make_service())
         .await?;
     Ok(())
 }
