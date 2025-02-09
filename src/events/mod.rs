@@ -16,7 +16,7 @@ use slack_morphism::{
     SlackApiToken, SlackApiTokenValue, SlackClient, SlackMessageContent,
 };
 #[cfg(feature = "events")]
-use tracing::{error, info};
+use tracing::error;
 
 #[cfg(feature = "events")]
 use crate::oauth::OAuthConfig;
@@ -142,7 +142,7 @@ async fn handle_slack_event(
     State(config): State<OAuthConfig>,
     Json(event): Json<SlackPushEvent>,
 ) -> Result<Response, String> {
-    info!("Slackイベントを受信: {:?}", event);
+    tracing::debug!("Slackイベントを受信: {:?}", event);
 
     let event: Event = event.into();
     match event {
@@ -167,7 +167,7 @@ async fn handle_slack_event(
             Ok("ok".into_response())
         }
         Event::Other => {
-            info!("未対応のイベントタイプ");
+            tracing::debug!("未対応のイベントタイプ");
             Ok("ok".into_response())
         }
     }
